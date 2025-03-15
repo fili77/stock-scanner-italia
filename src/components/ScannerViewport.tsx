@@ -39,8 +39,8 @@ const ScannerViewport = ({
       {status === 'idle' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/10 text-white">
           <Camera className="h-12 w-12 mb-4 opacity-50" />
-          <p className="text-lg font-medium">Ready to Scan</p>
-          <p className="text-sm opacity-70 mt-1">Press the scan button to begin</p>
+          <p className="text-lg font-medium">Pronto per la Scansione</p>
+          <p className="text-sm opacity-70 mt-1">Premi il pulsante per iniziare</p>
         </div>
       )}
     </div>

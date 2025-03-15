@@ -69,9 +69,9 @@ const CoursesPage = () => {
       
       <main className="flex-1 container max-w-7xl px-4 py-6">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-2">Courses & Attendance</h1>
+          <h1 className="text-2xl font-bold mb-2">Corsi e Presenze</h1>
           <p className="text-muted-foreground">
-            View and manage course attendance statistics
+            Visualizza e gestisci le statistiche di presenza ai corsi
           </p>
         </div>
 
@@ -82,7 +82,7 @@ const CoursesPage = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search courses..."
+                  placeholder="Cerca corsi..."
                   className="pl-9"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -116,7 +116,7 @@ const CoursesPage = () => {
                 
                 {filteredCourses?.length === 0 && (
                   <div className="text-center py-12 border rounded-lg bg-muted/20">
-                    <p className="text-muted-foreground">No courses found</p>
+                    <p className="text-muted-foreground">Nessun corso trovato</p>
                   </div>
                 )}
               </motion.div>
@@ -128,9 +128,9 @@ const CoursesPage = () => {
             {selectedCourse ? (
               <Tabs defaultValue="overview" className="w-full">
                 <TabsList className="mb-6">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="attendance">Attendance</TabsTrigger>
-                  <TabsTrigger value="students">Students</TabsTrigger>
+                  <TabsTrigger value="overview">Panoramica</TabsTrigger>
+                  <TabsTrigger value="attendance">Presenze</TabsTrigger>
+                  <TabsTrigger value="students">Studenti</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="overview">
@@ -138,7 +138,7 @@ const CoursesPage = () => {
                     <div>
                       <h2 className="text-xl font-semibold mb-1">{selectedCourse.name}</h2>
                       <p className="text-sm text-muted-foreground">
-                        {selectedCourse.totalStudents} students enrolled
+                        {selectedCourse.totalStudents} studenti iscritti
                       </p>
                     </div>
                     
@@ -160,19 +160,19 @@ const CoursesPage = () => {
                 
                 <TabsContent value="attendance">
                   <div className="text-center py-20 border rounded-lg bg-muted/20">
-                    <p className="text-muted-foreground">Detailed attendance records will appear here</p>
+                    <p className="text-muted-foreground">I dettagli delle presenze appariranno qui</p>
                   </div>
                 </TabsContent>
                 
                 <TabsContent value="students">
                   <div className="text-center py-20 border rounded-lg bg-muted/20">
-                    <p className="text-muted-foreground">Student list will appear here</p>
+                    <p className="text-muted-foreground">L'elenco degli studenti apparirà qui</p>
                   </div>
                 </TabsContent>
               </Tabs>
             ) : (
               <div className="flex items-center justify-center h-full border rounded-lg bg-muted/20 p-12">
-                <p className="text-muted-foreground">Select a course to view details</p>
+                <p className="text-muted-foreground">Seleziona un corso per visualizzare i dettagli</p>
               </div>
             )}
           </div>

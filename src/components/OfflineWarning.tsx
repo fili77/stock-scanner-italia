@@ -22,10 +22,10 @@ const OfflineWarning = ({ isOnline, queueSize }: OfflineWarningProps) => {
           <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
             <CloudOff className="h-4 w-4" />
             <AlertDescription className="flex justify-between items-center">
-              <span>You're offline. Attendance will be synced when connection is restored.</span>
+              <span>Sei offline. Le presenze saranno sincronizzate quando la connessione sarà ripristinata.</span>
               {queueSize > 0 && (
                 <span className="text-xs bg-destructive/20 px-2 py-1 rounded-full">
-                  {queueSize} pending
+                  {queueSize} in attesa
                 </span>
               )}
             </AlertDescription>

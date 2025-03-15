@@ -20,7 +20,7 @@ const ScanResults = ({ status, lastScannedStudent, onReset }: ScanResultsProps) 
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white">
           <div className="text-center">
             <Loader2 className="h-10 w-10 mx-auto mb-4 animate-rotate" />
-            <p className="text-lg font-medium">Processing...</p>
+            <p className="text-lg font-medium">Elaborazione...</p>
           </div>
         </div>
       )}
@@ -39,9 +39,9 @@ const ScanResults = ({ status, lastScannedStudent, onReset }: ScanResultsProps) 
                 <Check className="h-8 w-8" />
               </div>
               <p className="text-lg font-bold mb-1">{lastScannedStudent.name}</p>
-              <p className="text-sm opacity-90 mb-2">ID: {lastScannedStudent.id}</p>
+              <p className="text-sm opacity-90 mb-2">Matricola: {lastScannedStudent.id}</p>
               <p className="text-xs bg-white/20 px-3 py-1 rounded-full inline-block">
-                Attendance Recorded
+                Presenza Registrata
               </p>
             </div>
           </motion.div>
@@ -61,13 +61,13 @@ const ScanResults = ({ status, lastScannedStudent, onReset }: ScanResultsProps) 
               <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="h-8 w-8" />
               </div>
-              <p className="text-lg font-bold mb-2">Error Scanning</p>
+              <p className="text-lg font-bold mb-2">Errore di Scansione</p>
               <Button 
                 variant="outline" 
                 className="bg-transparent border-white/30 hover:bg-white/10 text-white"
                 onClick={onReset}
               >
-                Try Again
+                Riprova
               </Button>
             </div>
           </motion.div>

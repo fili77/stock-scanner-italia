@@ -33,14 +33,14 @@ const Header = () => {
       <div className="container flex h-16 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-1">
           <h1 className="text-lg font-semibold">
-            ScanAttendance
+            PresenzaScan
           </h1>
         </div>
         <nav className="flex items-center space-x-1">
           <NavItem to="/" label="Home" exact />
-          <NavItem to="/scan" label="Scan" />
-          <NavItem to="/courses" label="Courses" />
-          <NavItem to="/settings" label="Settings" />
+          <NavItem to="/scan" label="Scansiona" />
+          <NavItem to="/courses" label="Corsi" />
+          <NavItem to="/settings" label="Impostazioni" />
         </nav>
       </div>
     </header>

@@ -34,7 +34,7 @@ const ScanControls = ({
           className="flex items-center gap-2"
         >
           <X className="h-4 w-4" />
-          Stop Scanning
+          Interrompi Scansione
         </Button>
       )}
     </div>

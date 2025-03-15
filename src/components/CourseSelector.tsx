@@ -21,14 +21,14 @@ const CourseSelector = ({
 }: CourseSelectorProps) => {
   return (
     <div className="mb-8">
-      <label className="block text-sm font-medium mb-2">Select Course</label>
+      <label className="block text-sm font-medium mb-2">Seleziona Corso</label>
       <Select
         value={selectedCourse}
         onValueChange={onCourseChange}
         disabled={isLoadingCourses || scanStatus === 'scanning' || scanStatus === 'processing'}
       >
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select a course" />
+          <SelectValue placeholder="Seleziona un corso" />
         </SelectTrigger>
         <SelectContent>
           {isLoadingCourses ? (

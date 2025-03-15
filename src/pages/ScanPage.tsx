@@ -50,7 +50,7 @@ const ScanPage = () => {
 
   const startScanning = () => {
     if (!selectedCourse) {
-      alert('Please select a course first');
+      alert('Seleziona prima un corso');
       return;
     }
     
@@ -107,9 +107,9 @@ const ScanPage = () => {
       
       <main className="flex-1 container max-w-3xl px-4 py-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-2">Scan Attendance</h1>
+          <h1 className="text-2xl font-bold mb-2">Scansiona Presenze</h1>
           <p className="text-muted-foreground">
-            Select a course and scan student ID barcodes to mark attendance
+            Seleziona un corso e scansiona i codici a barre per registrare le presenze
           </p>
         </div>
 

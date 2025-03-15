@@ -20,7 +20,7 @@ const Index = () => {
           transition={{ duration: 0.5 }}
           className="text-center mb-10"
         >
-          <h1 className="text-3xl font-bold mb-3">ScanAttendance</h1>
+          <h1 className="text-3xl font-bold mb-3">PresenzaScan</h1>
           <p className="text-muted-foreground">
             Scansiona codici a barre degli studenti e registra le presenze in modo semplice e veloce
           </p>
