@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Scan, Settings, FileSpreadsheet, ImagePlus } from 'lucide-react';
+import { BookOpen, Scan, Settings, FileSpreadsheet, ImagePlus, UserPlus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Header from '@/components/Header';
 
@@ -21,6 +21,13 @@ const Index = () => {
       description: 'Carica una foto del foglio presenze',
       to: '/batch-scan',
       color: 'bg-green-600',
+    },
+    {
+      icon: <UserPlus className="h-6 w-6" />,
+      title: 'Presenza Manuale',
+      description: 'Inserisci manualmente presenze e genera fogli firma',
+      to: '/manual-attendance',
+      color: 'bg-purple-600',
     },
     {
       icon: <BookOpen className="h-6 w-6" />,

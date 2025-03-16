@@ -9,6 +9,7 @@ import ScanPage from "./pages/ScanPage";
 import BatchScanPage from "./pages/BatchScanPage";
 import CoursesPage from "./pages/CoursesPage";
 import SettingsPage from "./pages/SettingsPage";
+import ManualAttendancePage from "./pages/ManualAttendancePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/batch-scan" element={<BatchScanPage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/manual-attendance" element={<ManualAttendancePage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
