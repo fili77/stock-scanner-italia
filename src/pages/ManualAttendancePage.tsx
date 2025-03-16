@@ -6,12 +6,13 @@ import ManualAttendance from '@/components/ManualAttendance';
 import AttendanceSheet from '@/components/AttendanceSheet';
 import { useQuery } from '@tanstack/react-query';
 import googleSheetsAPI from '@/utils/googleSheetsAPI';
+import { ScanStatus } from '@/hooks/useAttendance';
 
 const ManualAttendancePage = () => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   
   // Ottieni i dati del corso selezionato
-  const { data: courses = [] } = useQuery({
+  const { data: courses = [], isLoading: isLoadingCourses } = useQuery({
     queryKey: ['courses'],
     queryFn: () => googleSheetsAPI.getCourses(),
   });
@@ -29,14 +30,20 @@ const ManualAttendancePage = () => {
           <div>
             <h2 className="text-lg font-semibold mb-4">Seleziona Corso</h2>
             <CourseSelector 
-              onCourseSelect={(courseId) => setSelectedCourseId(courseId)} 
-              selectedCourseId={selectedCourseId}
+              selectedCourse={selectedCourseId}
+              onCourseChange={(courseId) => setSelectedCourseId(courseId)}
+              courses={courses}
+              isLoadingCourses={isLoadingCourses}
+              scanStatus="idle" as ScanStatus
             />
           </div>
           
           {selectedCourseId && (
             <ManualAttendance 
               selectedCourseId={selectedCourseId}
+              onSuccess={() => {
+                // Refresh dei dati dopo l'inserimento manuale
+              }}
             />
           )}
         </div>
