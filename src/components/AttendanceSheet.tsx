@@ -5,8 +5,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { FileSpreadsheet, Printer, Download } from 'lucide-react';
-import { format } from 'date-fns';
-import { it } from 'date-fns/locale';
 import googleSheetsAPI, { Student } from '@/utils/googleSheetsAPI';
 import { useQuery } from '@tanstack/react-query';
 
@@ -26,8 +24,15 @@ const AttendanceSheet = ({ courseId, courseName }: AttendanceSheetProps) => {
     enabled: !!courseId,
   });
 
-  const currentDate = format(new Date(), 'EEEE d MMMM yyyy', { locale: it });
-  const currentTime = format(new Date(), 'HH:mm');
+  // Ottieni il nome del docente (simulato per questo esempio)
+  const getTeacherName = (courseId: string) => {
+    const teacherMap = {
+      'C001': 'Prof. Mario Bianchi',
+      'C002': 'Prof.ssa Giulia Neri',
+      'C003': 'Prof. Antonio Verdi',
+    };
+    return teacherMap[courseId as keyof typeof teacherMap] || 'Docente non specificato';
+  };
 
   const handlePrint = () => {
     const printContent = printRef.current;
@@ -81,9 +86,17 @@ const AttendanceSheet = ({ courseId, courseName }: AttendanceSheetProps) => {
         <div ref={printRef} className="border rounded-md p-4">
           <div className="text-center mb-6 print:mb-8">
             <h2 className="text-xl font-bold">{courseName}</h2>
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium">Data:</span> {currentDate} - <span className="font-medium">Ora:</span> {currentTime}
+            <p className="text-sm text-muted-foreground mb-2">
+              <span className="font-medium">Docente:</span> {getTeacherName(courseId)}
             </p>
+            <div className="flex justify-center gap-8 mt-4">
+              <p className="text-sm">
+                <span className="font-medium">Data:</span> ____________________
+              </p>
+              <p className="text-sm">
+                <span className="font-medium">Ora:</span> ____________________
+              </p>
+            </div>
           </div>
 
           <Table>
