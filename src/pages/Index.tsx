@@ -1,110 +1,105 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Camera, BarChart2, Settings, Layers } from 'lucide-react';
+import { BookOpen, Scan, Settings, FileSpreadsheet, ImagePlus } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import Header from '@/components/Header';
 
 const Index = () => {
-  const navigate = useNavigate();
+  const menuItems = [
+    {
+      icon: <Scan className="h-6 w-6" />,
+      title: 'Scansiona Presenza',
+      description: 'Registra presenze con scansione di codici individuali',
+      to: '/scan',
+      color: 'bg-primary',
+    },
+    {
+      icon: <ImagePlus className="h-6 w-6" />,
+      title: 'Scansione Multipla',
+      description: 'Carica una foto del foglio presenze',
+      to: '/batch-scan',
+      color: 'bg-green-600',
+    },
+    {
+      icon: <BookOpen className="h-6 w-6" />,
+      title: 'Corsi',
+      description: 'Gestisci e visualizza i corsi',
+      to: '/courses',
+      color: 'bg-blue-600',
+    },
+    {
+      icon: <Settings className="h-6 w-6" />,
+      title: 'Impostazioni',
+      description: 'Configura l\'applicazione',
+      to: '/settings',
+      color: 'bg-orange-600',
+    },
+  ];
+
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       
-      <main className="flex-1 container max-w-md mx-auto px-4 py-8">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10"
-        >
-          <h1 className="text-3xl font-bold mb-3">PresenzaScan</h1>
-          <p className="text-muted-foreground">
-            Scansiona codici a barre degli studenti e registra le presenze in modo semplice e veloce
-          </p>
-        </motion.div>
-        
-        <div className="grid grid-cols-1 gap-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+      <main className="flex-1 container max-w-4xl px-4 py-8 flex items-center justify-center">
+        <div className="w-full">
+          <motion.h1 
+            className="text-3xl font-extrabold text-center mb-8"
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            transition={{ duration: 0.5 }}
           >
-            <Button 
-              variant="default"
-              size="lg"
-              className="w-full h-20 text-xl"
-              onClick={() => navigate('/scan')}
-            >
-              <Camera className="mr-2 h-6 w-6" />
-              Scansiona Presenze
-            </Button>
-          </motion.div>
+            Gestione Presenze
+          </motion.h1>
           
-          <div className="grid grid-cols-2 gap-4">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <Button 
-                variant="outline"
-                size="lg"
-                className="w-full h-24 flex flex-col items-center justify-center"
-                onClick={() => navigate('/courses')}
-              >
-                <Layers className="h-6 w-6 mb-2" />
-                <span>Corsi</span>
-              </Button>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
-              <Button 
-                variant="outline"
-                size="lg"
-                className="w-full h-24 flex flex-col items-center justify-center"
-                onClick={() => navigate('/courses')}
-              >
-                <BarChart2 className="h-6 w-6 mb-2" />
-                <span>Statistiche</span>
-              </Button>
-            </motion.div>
-          </div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            variants={container}
+            initial="hidden"
+            animate="show"
           >
-            <Button 
-              variant="ghost"
-              size="lg"
-              className="w-full"
-              onClick={() => navigate('/settings')}
-            >
-              <Settings className="mr-2 h-5 w-5" />
-              Impostazioni
-            </Button>
+            {menuItems.map((item, index) => (
+              <MenuItem key={index} {...item} variants={item} />
+            ))}
           </motion.div>
         </div>
-        
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.6 }}
-          className="mt-16 text-center text-sm text-muted-foreground"
-        >
-          <p>Connetti il tuo foglio Google Sheets</p>
-          <p>dalle impostazioni dell'app</p>
-        </motion.div>
       </main>
     </div>
   );
 };
+
+const MenuItem = ({ icon, title, description, to, color, variants }) => (
+  <motion.div variants={variants}>
+    <Link to={to}>
+      <Card className="h-full hover:bg-accent transition-colors duration-300">
+        <CardContent className="p-6 flex items-center space-x-4">
+          <div className={`p-3 rounded-full ${color} text-white`}>
+            {icon}
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">{title}</h2>
+            <p className="text-sm text-muted-foreground">{description}</p>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  </motion.div>
+);
 
 export default Index;
