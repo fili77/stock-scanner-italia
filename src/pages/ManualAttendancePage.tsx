@@ -34,7 +34,7 @@ const ManualAttendancePage = () => {
               onCourseChange={(courseId) => setSelectedCourseId(courseId)}
               courses={courses}
               isLoadingCourses={isLoadingCourses}
-              scanStatus="idle" as ScanStatus
+              scanStatus={"idle" as ScanStatus}
             />
           </div>
           
