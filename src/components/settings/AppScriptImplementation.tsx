@@ -22,6 +22,9 @@ export const AppScriptImplementation = () => {
   var action = e.parameter.action;
   var result = {};
   
+  Logger.log("Received GET request with action: " + action);
+  Logger.log("Parameters: " + JSON.stringify(e.parameter));
+  
   if (action === "getStudents") {
     result = getStudentsList(e.parameter.courseId);
   } else if (action === "getCourses") {
@@ -34,65 +37,109 @@ export const AppScriptImplementation = () => {
   } else if (action === "markAttendance") {
     // Handle mark attendance in GET request
     result = markStudentAttendance(e.parameter.studentId, e.parameter.courseId, e.parameter.date);
+  } else if (action === "getAttendanceStats") {
+    result = getAttendanceStats(e.parameter.courseId);
   }
   
-  return ContentService.createTextOutput(JSON.stringify(result))
+  var output = ContentService.createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+  
+  // Add CORS headers
+  output.setHeader('Access-Control-Allow-Origin', '*');
+  return output;
 }
 
 function doPost(e) {
   // Handle POST requests
-  var action = e.parameter.action;
-  var result = { success: false };
+  var result = { success: false, message: "Invalid request" };
   
-  if (action === "markAttendance") {
-    var data = JSON.parse(e.postData.contents);
-    result = markStudentAttendance(data.studentId, data.courseId, data.date);
-  } else if (action === "syncAttendance") {
-    var data = JSON.parse(e.postData.contents);
-    result = syncAttendanceRecords(data.records);
-  } else if (action === "addCourse") {
+  Logger.log("Received POST request");
+  
+  try {
     if (e.postData && e.postData.contents) {
       var data = JSON.parse(e.postData.contents);
-      result = addCourse(data.id, data.name, data.teacher);
-    } else {
-      result = addCourse(e.parameter.id, e.parameter.name, e.parameter.teacher);
+      Logger.log("POST data: " + JSON.stringify(data));
+      
+      if (data.action === "markAttendance") {
+        result = markStudentAttendance(data.studentId, data.courseId, data.date);
+      } else if (data.action === "syncAttendance") {
+        result = syncAttendanceRecords(data.records);
+      } else if (data.action === "addCourse") {
+        result = addCourse(data.id, data.name, data.teacher);
+      }
+    } else if (e.parameter && e.parameter.action) {
+      // Fallback for URL parameters in POST
+      Logger.log("POST parameters: " + JSON.stringify(e.parameter));
+      
+      if (e.parameter.action === "addCourse") {
+        result = addCourse(e.parameter.id, e.parameter.name, e.parameter.teacher);
+      } else if (e.parameter.action === "markAttendance") {
+        result = markStudentAttendance(e.parameter.studentId, e.parameter.courseId, e.parameter.date);
+      }
     }
+  } catch (error) {
+    result.message = "Error: " + error.toString();
+    Logger.log("Error in doPost: " + error.toString());
   }
   
-  return ContentService.createTextOutput(JSON.stringify(result))
+  var output = ContentService.createTextOutput(JSON.stringify(result))
     .setMimeType(ContentService.MimeType.JSON);
+  
+  // Add CORS headers
+  output.setHeader('Access-Control-Allow-Origin', '*');
+  return output;
 }
 
 function getStudentsList(courseId) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Studenti");
+  
+  if (!sheet) {
+    Logger.log("Studenti sheet not found");
+    return [];
+  }
+  
   var data = sheet.getDataRange().getValues();
   var students = [];
+  
+  Logger.log("Found " + data.length + " rows in Studenti sheet");
   
   // Skip header row
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    var student = {
-      id: row[0],
-      name: row[1] + " " + row[2],
-      courses: row[3].split(",").map(function(course) { return course.trim(); })
-    };
-    
-    // If courseId is provided, filter students
-    if (courseId && student.courses.indexOf(courseId) !== -1) {
-      students.push(student);
-    } else if (!courseId) {
-      students.push(student);
+    if (row[0] && row[0] !== "") {
+      var student = {
+        id: row[0],
+        name: row[1] + " " + row[2],
+        courses: row[3].split(",").map(function(course) { return course.trim(); })
+      };
+      
+      // If courseId is provided, filter students
+      if (courseId && student.courses.indexOf(courseId) !== -1) {
+        students.push(student);
+      } else if (!courseId) {
+        students.push(student);
+      }
     }
   }
   
+  Logger.log("Returning " + students.length + " students");
   return students;
 }
 
 function getCoursesList() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Corsi");
+  
+  if (!sheet) {
+    Logger.log("Corsi sheet not found, creating it");
+    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Corsi");
+    sheet.appendRow(["ID Corso", "Nome Corso", "Docente", "Totale Studenti"]);
+    return [];
+  }
+  
   var data = sheet.getDataRange().getValues();
   var courses = [];
+  
+  Logger.log("Found " + data.length + " rows in Corsi sheet");
   
   // Skip header row
   for (var i = 1; i < data.length; i++) {
@@ -107,7 +154,7 @@ function getCoursesList() {
     }
   }
   
-  Logger.log("Courses found: " + JSON.stringify(courses));
+  Logger.log("Returning " + courses.length + " courses");
   return courses;
 }
 
@@ -118,6 +165,7 @@ function addCourse(courseId, courseName, teacherName) {
     
     if (!sheet) {
       // Create the Corsi sheet if it doesn't exist
+      Logger.log("Corsi sheet not found, creating it");
       sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Corsi");
       sheet.appendRow(["ID Corso", "Nome Corso", "Docente", "Totale Studenti"]);
     }
@@ -140,12 +188,21 @@ function addCourse(courseId, courseName, teacherName) {
 
 function findStudentById(studentId) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Studenti");
+  
+  if (!sheet) {
+    Logger.log("Studenti sheet not found");
+    return { found: false };
+  }
+  
   var data = sheet.getDataRange().getValues();
+  
+  Logger.log("Searching for student with ID: " + studentId);
   
   // Skip header row
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
     if (row[0] === studentId) {
+      Logger.log("Student found");
       return {
         found: true,
         student: {
@@ -157,50 +214,138 @@ function findStudentById(studentId) {
     }
   }
   
+  Logger.log("Student not found");
   return { found: false };
 }
 
 function markStudentAttendance(studentId, courseId, date) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presenze");
-  
-  if (!sheet) {
-    // Create the Presenze sheet if it doesn't exist
-    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Presenze");
-    sheet.appendRow(["ID Studente", "ID Corso", "Data", "Presente"]);
+  try {
+    Logger.log("Marking attendance: Student=" + studentId + ", Course=" + courseId + ", Date=" + date);
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presenze");
+    
+    if (!sheet) {
+      // Create the Presenze sheet if it doesn't exist
+      Logger.log("Presenze sheet not found, creating it");
+      sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Presenze");
+      sheet.appendRow(["ID Studente", "ID Corso", "Data", "Presente"]);
+    }
+    
+    // Add attendance record
+    sheet.appendRow([
+      studentId,
+      courseId,
+      date,
+      "presente"
+    ]);
+    
+    Logger.log("Attendance marked successfully");
+    return { success: true, message: "Attendance marked successfully" };
+  } catch(error) {
+    Logger.log("Error marking attendance: " + error.toString());
+    return { success: false, message: "Error: " + error.toString() };
   }
-  
-  // Add attendance record
-  sheet.appendRow([
-    studentId,
-    courseId,
-    date,
-    "presente"
-  ]);
-  
-  return { success: true };
 }
 
 function syncAttendanceRecords(records) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presenze");
-  
-  if (!sheet) {
-    // Create the Presenze sheet if it doesn't exist
-    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Presenze");
-    sheet.appendRow(["ID Studente", "ID Corso", "Data", "Presente"]);
+  try {
+    Logger.log("Syncing " + records.length + " attendance records");
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presenze");
+    
+    if (!sheet) {
+      // Create the Presenze sheet if it doesn't exist
+      Logger.log("Presenze sheet not found, creating it");
+      sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Presenze");
+      sheet.appendRow(["ID Studente", "ID Corso", "Data", "Presente"]);
+    }
+    
+    // Add all records
+    for (var i = 0; i < records.length; i++) {
+      var record = records[i];
+      sheet.appendRow([
+        record.studentId,
+        record.courseId,
+        record.date,
+        "presente"
+      ]);
+    }
+    
+    Logger.log("All attendance records synced successfully");
+    return { success: true, message: "All records synced successfully" };
+  } catch(error) {
+    Logger.log("Error syncing attendance records: " + error.toString());
+    return { success: false, message: "Error: " + error.toString() };
   }
-  
-  // Add all records
-  for (var i = 0; i < records.length; i++) {
-    var record = records[i];
-    sheet.appendRow([
-      record.studentId,
-      record.courseId,
-      record.date,
-      "presente"
-    ]);
+}
+
+function getAttendanceStats(courseId) {
+  try {
+    Logger.log("Getting attendance stats for course: " + courseId);
+    var presenceSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presenze");
+    var studentSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Studenti");
+    
+    if (!presenceSheet || !studentSheet) {
+      Logger.log("Required sheets not found");
+      return [];
+    }
+    
+    var presenceData = presenceSheet.getDataRange().getValues();
+    var studentData = studentSheet.getDataRange().getValues();
+    
+    // Count students in this course
+    var totalStudents = 0;
+    for (var i = 1; i < studentData.length; i++) {
+      var courses = studentData[i][3].split(",").map(function(course) { return course.trim(); });
+      if (courses.indexOf(courseId) !== -1) {
+        totalStudents++;
+      }
+    }
+    
+    // Get all attendance records for this course
+    var courseAttendance = [];
+    for (var i = 1; i < presenceData.length; i++) {
+      var row = presenceData[i];
+      if (row[1] === courseId) {
+        courseAttendance.push({
+          studentId: row[0],
+          courseId: row[1],
+          date: row[2],
+          present: row[3] === "presente"
+        });
+      }
+    }
+    
+    // Get unique dates when attendance was taken
+    var dateMap = {};
+    for (var i = 0; i < courseAttendance.length; i++) {
+      dateMap[courseAttendance[i].date] = true;
+    }
+    var dates = Object.keys(dateMap);
+    
+    // Calculate stats for each date
+    var stats = [];
+    for (var i = 0; i < dates.length; i++) {
+      var date = dates[i];
+      var attendanceCount = 0;
+      
+      for (var j = 0; j < courseAttendance.length; j++) {
+        if (courseAttendance[j].date === date && courseAttendance[j].present) {
+          attendanceCount++;
+        }
+      }
+      
+      stats.push({
+        date: date,
+        count: attendanceCount,
+        percentage: Math.round((attendanceCount / totalStudents) * 100) || 0
+      });
+    }
+    
+    Logger.log("Returning stats for " + stats.length + " dates");
+    return stats;
+  } catch(error) {
+    Logger.log("Error getting attendance stats: " + error.toString());
+    return [];
   }
-  
-  return { success: true };
 }`}
         </div>
         
@@ -242,14 +387,11 @@ function syncAttendanceRecords(records) {
         <div className="rounded-md bg-yellow-50 p-4 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300">
           <p className="text-sm font-medium">Importante:</p>
           <p className="text-xs mt-1">
-            Assicurati di abilitare CORS nello script aggiungendo questo header alla risposta:
+            Questo script aggiunge automaticamente gli header CORS necessari per la comunicazione con l'app.
           </p>
-          <code className="text-xs block mt-2 bg-yellow-100 dark:bg-yellow-900 p-2 rounded">
-            .setHeader('Access-Control-Allow-Origin', '*')
-          </code>
           <p className="text-xs mt-2">
-            Se l'app non riesce a comunicare con il foglio, puoi verificare gli errori nella console
-            degli sviluppatori del browser (F12 &gt; Console).
+            Se l'app non riesce a comunicare con il foglio, verifica i log dello script in Apps Script
+            (View &gt; Logs) per capire cosa non funziona.
           </p>
         </div>
       </CardContent>

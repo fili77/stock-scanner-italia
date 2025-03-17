@@ -134,8 +134,7 @@ export class AttendanceApi extends ApiClient {
     try {
       // Use the Apps Script URL to fetch real data
       const response = await fetch(
-        `${this.appsScriptUrl}?action=getAttendanceStats&courseId=${encodeURIComponent(courseId)}`,
-        { mode: 'cors' }
+        `${this.appsScriptUrl}?action=getAttendanceStats&courseId=${encodeURIComponent(courseId)}`
       );
       
       if (!response.ok) {
