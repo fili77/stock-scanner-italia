@@ -15,7 +15,7 @@ export const DeploymentInstructions = () => {
         <li>Copia l'URL generato e incollalo sopra nella sezione "Apps Script Web App URL"</li>
       </ol>
       <p className="text-xs mt-2 italic">
-        Nota: Non aggiungere import/export al codice in Apps Script. Copia il codice così com'è senza modificarlo.
+        <strong className="text-red-600">IMPORTANTE:</strong> Non aggiungere import/export al codice in Apps Script. Copia il codice così com'è senza modificarlo.
       </p>
     </div>
   );

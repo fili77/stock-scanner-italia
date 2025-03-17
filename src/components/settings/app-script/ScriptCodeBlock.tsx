@@ -4,7 +4,10 @@ import React from 'react';
 export const ScriptCodeBlock = () => {
   return (
     <div className="bg-muted p-3 rounded-md overflow-auto max-h-60 whitespace-pre text-xs font-mono">
-{`function doGet(e) {
+{`// IMPORTANTE: Copia SOLO questo codice nell'editor di Apps Script
+// NON aggiungere import/export - Apps Script NON supporta questa sintassi
+
+function doGet(e) {
   // Handle GET requests
   var action = e.parameter.action;
   var result = {};
