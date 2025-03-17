@@ -8,8 +8,12 @@ export const CleanScriptCodeBlock = () => {
   const { toast } = useToast();
   const [copied, setCopied] = React.useState(false);
 
-  // Script code without any imports or exports - pure Apps Script code
-  const scriptCode = `function doGet(e) {
+  // Script code as pure vanilla JavaScript - compatible with Google Apps Script
+  // No import/export statements, no ES6 module syntax
+  const scriptCode = `// QUESTO È UN CODICE VANILLA JAVASCRIPT - NON MODIFICARE
+// NON AGGIUNGERE IMPORT O EXPORT - Apps Script non supporta questa sintassi
+
+function doGet(e) {
   var action = e.parameter.action;
   var result = {};
   
@@ -349,20 +353,24 @@ function getAttendanceStats(courseId) {
       
       <div className="bg-gray-950 text-gray-200 dark:bg-gray-900 p-4 rounded-md overflow-auto max-h-96 whitespace-pre text-xs font-mono relative border border-yellow-400">
         <div className="absolute top-0 left-0 right-0 bg-yellow-400 text-yellow-950 p-1.5 text-xs font-bold">
-          ⚠️ IMPORTANTE: Copia SOLO il codice sotto, non aggiungere import/export!
+          ⚠️ IMPORTANTE: Copia SOLO il codice sotto, NON modificarlo. Apps Script non supporta import/export!
         </div>
         <pre className="mt-7">{scriptCode}</pre>
       </div>
       
-      <div className="rounded-md bg-yellow-50 p-3 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300 text-xs">
-        <p className="font-bold">Come copiare correttamente:</p>
+      <div className="rounded-md bg-red-50 p-3 text-red-800 dark:bg-red-950 dark:text-red-300 text-xs">
+        <p className="font-bold flex items-center gap-1">
+          <span className="text-red-600 text-base">⚠️</span>
+          Risolvere l'errore "Cannot use import statement outside a module":
+        </p>
         <ol className="list-decimal list-inside mt-1 space-y-1">
+          <li>Il codice Apps Script deve essere puro JavaScript, NO import/export</li>
           <li>Clicca sul pulsante "Copia Script" sopra</li>
           <li>Nel tuo Google Sheet, vai su "Extensions" &gt; "Apps Script"</li>
-          <li>Cancella TUTTO il codice esistente nell'editor</li>
-          <li>Incolla il codice copiato</li>
+          <li>Cancella TUTTO il codice esistente nell'editor Apps Script</li>
+          <li>Incolla il codice copiato ESATTAMENTE come fornito</li>
           <li>Salva (Ctrl+S o Cmd+S)</li>
-          <li>Pubblica come descritto nelle istruzioni di deployment</li>
+          <li>Apps Script deve contenere solo funzioni JavaScript, no imports</li>
         </ol>
       </div>
     </div>
