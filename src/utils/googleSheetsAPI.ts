@@ -243,9 +243,22 @@ class GoogleSheetsAPI {
       await this.authenticate();
     }
 
-    // If not authenticated and offline, return false
-    if (!this.isAuthenticated) {
-      return false;
+    // Se non siamo autenticati, proviamo con i dati di test
+    if (!this.isAuthenticated && !this.isOnline) {
+      console.log("Using mock data - adding course to mock data");
+      try {
+        // Aggiungiamo il corso ai dati di test
+        mockCourses.push({
+          id: courseData.id,
+          name: courseData.name,
+          teacher: courseData.teacher,
+          totalStudents: 0
+        });
+        return true;
+      } catch (error) {
+        console.error("Error adding course to mock data:", error);
+        return false;
+      }
     }
 
     try {
@@ -260,19 +273,23 @@ class GoogleSheetsAPI {
           },
           body: JSON.stringify({
             action: 'addCourse',
-            id: courseData.id,
-            name: courseData.name,
-            teacher: courseData.teacher
+            courseData: {
+              id: courseData.id,
+              name: courseData.name,
+              teacher: courseData.teacher
+            }
           })
         }
       );
       
       if (!response.ok) {
+        console.error("HTTP error:", response.status, response.statusText);
         throw new Error(`HTTP error: ${response.status}`);
       }
       
       const result = await response.json();
-      return result.success;
+      console.log("Course add result:", result);
+      return result.success === true;
     } catch (error) {
       console.error("Error adding course:", error);
       return false;

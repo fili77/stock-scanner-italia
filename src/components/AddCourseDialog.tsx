@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,6 +60,7 @@ const AddCourseDialog = ({ open, onOpenChange, onCourseAdded }: AddCourseDialogP
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Aggiungi Nuovo Corso</DialogTitle>
+          <DialogDescription>Inserisci i dettagli del nuovo corso da aggiungere.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-2">
