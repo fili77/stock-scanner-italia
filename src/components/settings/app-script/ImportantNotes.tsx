@@ -6,11 +6,14 @@ export const ImportantNotes = () => {
     <div className="rounded-md bg-yellow-50 p-4 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300">
       <p className="text-sm font-medium">Importante:</p>
       <p className="text-xs mt-1 font-bold">
-        Ecco lo script che devi copiare e incollare nell'editor di Apps Script:
+        Ecco lo script che devi copiare e incollare ESATTAMENTE così com'è nell'editor di Apps Script:
       </p>
       <div className="mt-3 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
         <code className="whitespace-pre-wrap">
-          {`function doGet(e) {
+          {`// NON AGGIUNGERE IMPORT O EXPORT - Apps Script non supporta questa sintassi
+// Copia tutto il codice qui sotto, dalla funzione doGet fino alla fine
+
+function doGet(e) {
   // Handle GET requests
   var action = e.parameter.action;
   var result = {};
@@ -342,9 +345,17 @@ function getAttendanceStats(courseId) {
 }`}
         </code>
       </div>
-      <p className="text-xs mt-2">
-        Per aprire l'editor: nel tuo foglio Google vai su "Extensions" &gt; "Apps Script" e incolla il codice completo.
+      <p className="text-xs mt-2 font-medium">
+        Passo-passo per copiare correttamente lo script:
       </p>
+      <ol className="list-decimal list-inside text-xs mt-1 space-y-1">
+        <li>Nel tuo foglio Google, vai su "Extensions" &gt; "Apps Script"</li>
+        <li>Nell'editor di Apps Script, seleziona tutto il codice esistente e cancellalo</li>
+        <li>Copia tutto il codice dalla casella sopra, a partire dalla funzione doGet</li>
+        <li>Incollalo nell'editor di Apps Script</li>
+        <li>Salva il file (Ctrl+S o Cmd+S)</li>
+        <li>NON aggiungere import o export, poiché Apps Script non supporta questa sintassi</li>
+      </ol>
       <p className="text-xs mt-2">
         Questo script aggiunge automaticamente gli header CORS necessari per la comunicazione con l'app.
       </p>
