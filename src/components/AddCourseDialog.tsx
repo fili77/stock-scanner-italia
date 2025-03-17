@@ -31,6 +31,13 @@ const AddCourseDialog = ({ open, onOpenChange, onCourseAdded }: AddCourseDialogP
     setIsSubmitting(true);
     
     try {
+      // Check if we have a Google Apps Script URL set
+      const appsScriptUrl = googleSheetsAPI.getAppsScriptUrl();
+      if (!appsScriptUrl && !googleSheetsAPI.getOnlineStatus()) {
+        // We're in offline mode and we'll use mock data
+        toast.info('Applicazione in modalità offline. Il corso sarà salvato localmente.');
+      }
+
       const success = await googleSheetsAPI.addCourse({
         id: courseId,
         name: courseName,
@@ -45,11 +52,11 @@ const AddCourseDialog = ({ open, onOpenChange, onCourseAdded }: AddCourseDialogP
         onOpenChange(false);
         if (onCourseAdded) onCourseAdded();
       } else {
-        toast.error('Errore durante l\'aggiunta del corso.');
+        toast.error('Errore durante l\'aggiunta del corso. Controlla la configurazione del Google Apps Script.');
       }
     } catch (error) {
       console.error('Errore:', error);
-      toast.error('Si è verificato un errore. Riprova più tardi.');
+      toast.error('Si è verificato un errore. Riprova più tardi o verifica la configurazione.');
     } finally {
       setIsSubmitting(false);
     }
