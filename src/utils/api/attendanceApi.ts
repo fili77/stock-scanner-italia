@@ -31,13 +31,23 @@ export class AttendanceApi extends ApiClient {
     }
 
     try {
-      // Use the Apps Script URL to record attendance using no-cors mode
-      return await this.fetchWithNoCors('', 'POST', {
-        action: 'markAttendance',
-        studentId,
-        courseId,
-        date
-      });
+      // Use the Apps Script URL to record attendance
+      const url = new URL(this.appsScriptUrl as string);
+      url.searchParams.append('action', 'markAttendance');
+      url.searchParams.append('studentId', studentId);
+      url.searchParams.append('courseId', courseId);
+      url.searchParams.append('date', date);
+      
+      console.log("Sending attendance data to Google Apps Script:", url.toString());
+      
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result.success === true;
     } catch (error) {
       console.error("Error marking attendance:", error);
       // Add to queue for later sync
@@ -62,7 +72,6 @@ export class AttendanceApi extends ApiClient {
         `${this.appsScriptUrl}`,
         {
           method: 'POST',
-          mode: 'cors',
           headers: {
             'Content-Type': 'application/json',
           },
