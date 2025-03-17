@@ -1,4 +1,3 @@
-
 // Course API operations
 import { ApiClient } from './apiClient';
 import { Course } from './models';
@@ -44,11 +43,11 @@ export class CourseApi extends ApiClient {
       await this.authenticate();
     }
 
-    // Se non siamo autenticati o siamo offline, usiamo dati di test
+    // If we're not authenticated or offline, use mock data
     if (!this.isAuthenticated || !this.isOnline) {
       console.log("Using mock data - adding course to mock data");
       try {
-        // Aggiungiamo il corso ai dati di test
+        // Add the course to mock data
         mockCourses.push({
           id: courseData.id,
           name: courseData.name,
@@ -64,16 +63,34 @@ export class CourseApi extends ApiClient {
 
     try {
       console.log("Sending course data to Google Apps Script:", courseData);
-      console.log("URL:", this.appsScriptUrl);
       
-      return await this.fetchWithNoCors('', 'POST', {
-        action: 'addCourse',
-        courseData: {
-          id: courseData.id,
-          name: courseData.name,
-          teacher: courseData.teacher
-        }
+      // Create the URL with the action parameter
+      const url = `${this.appsScriptUrl}?action=addCourse`;
+      console.log("Request URL:", url);
+
+      // Create the form data for the request
+      const formData = new URLSearchParams();
+      formData.append('id', courseData.id);
+      formData.append('name', courseData.name);
+      formData.append('teacher', courseData.teacher);
+      
+      console.log("Form data:", formData.toString());
+      
+      // Make a POST request to the Apps Script
+      const response = await fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData
       });
+      
+      console.log("Response received:", response);
+      
+      // Since we're using no-cors mode, we can't access the response status
+      // We'll assume success if the request didn't throw an error
+      return true;
     } catch (error) {
       console.error("Error adding course:", error);
       return false;

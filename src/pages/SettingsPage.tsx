@@ -294,13 +294,17 @@ const SettingsPage = () => {
 
 function doPost(e) {
   // Handle POST requests
-  var data = JSON.parse(e.postData.contents);
+  var action = e.parameter.action;
   var result = { success: false };
   
-  if (data.action === "markAttendance") {
+  if (action === "markAttendance") {
+    var data = JSON.parse(e.postData.contents);
     result = markStudentAttendance(data.studentId, data.courseId, data.date);
-  } else if (data.action === "syncAttendance") {
+  } else if (action === "syncAttendance") {
+    var data = JSON.parse(e.postData.contents);
     result = syncAttendanceRecords(data.records);
+  } else if (action === "addCourse") {
+    result = addCourse(e.parameter.id, e.parameter.name, e.parameter.teacher);
   }
   
   return ContentService.createTextOutput(JSON.stringify(result))
@@ -344,11 +348,30 @@ function getCoursesList() {
     courses.push({
       id: row[0],
       name: row[1],
+      teacher: row[2],
       totalStudents: row[3]
     });
   }
   
   return courses;
+}
+
+function addCourse(courseId, courseName, teacherName) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Corsi");
+    
+    // Add the new course to the sheet
+    sheet.appendRow([
+      courseId,
+      courseName,
+      teacherName,
+      0  // Initial totalStudents value
+    ]);
+    
+    return { success: true, message: "Course added successfully" };
+  } catch(error) {
+    return { success: false, message: "Error: " + error.toString() };
+  }
 }
 
 function findStudentById(studentId) {
