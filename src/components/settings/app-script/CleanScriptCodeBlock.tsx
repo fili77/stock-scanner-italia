@@ -8,10 +8,8 @@ export const CleanScriptCodeBlock = () => {
   const { toast } = useToast();
   const [copied, setCopied] = React.useState(false);
 
-  const scriptCode = `// COPIA SOLO QUESTO CODICE - NON AGGIUNGERE IMPORT O EXPORT
-// Elimina tutto il codice esistente nell'editor e incolla solo quanto segue
-
-function doGet(e) {
+  // Script code without any imports or exports - pure Apps Script code
+  const scriptCode = `function doGet(e) {
   var action = e.parameter.action;
   var result = {};
   
@@ -351,7 +349,7 @@ function getAttendanceStats(courseId) {
       
       <div className="bg-gray-950 text-gray-200 dark:bg-gray-900 p-4 rounded-md overflow-auto max-h-96 whitespace-pre text-xs font-mono relative border border-yellow-400">
         <div className="absolute top-0 left-0 right-0 bg-yellow-400 text-yellow-950 p-1.5 text-xs font-bold">
-          ⚠️ IMPORTANTE: Copia SOLO il codice sotto, non includere import/export!
+          ⚠️ IMPORTANTE: Copia SOLO il codice sotto, non aggiungere import/export!
         </div>
         <pre className="mt-7">{scriptCode}</pre>
       </div>
