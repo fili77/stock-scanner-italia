@@ -51,6 +51,10 @@ class GoogleSheetsAPI extends ApiClient {
     return this.courseApi.getCourses();
   }
 
+  async getNextAvailableCourseId(): Promise<string> {
+    return this.courseApi.getNextAvailableCourseId();
+  }
+
   async addCourse(courseData: { id: string; name: string; teacher: string }): Promise<boolean> {
     return this.courseApi.addCourse(courseData);
   }

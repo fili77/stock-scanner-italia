@@ -1,3 +1,4 @@
+
 // Course API operations
 import { ApiClient } from './apiClient';
 import { Course } from './models';
@@ -35,6 +36,29 @@ export class CourseApi extends ApiClient {
       console.error("Error fetching courses:", error);
       // Fallback to mock data
       return mockCourses;
+    }
+  }
+
+  async getNextAvailableCourseId(): Promise<string> {
+    try {
+      // Get all existing courses
+      const courses = await this.getCourses();
+      
+      // Extract numeric IDs and find the highest one
+      const numericIds = courses.map(course => {
+        const match = course.id.match(/\d+/);
+        return match ? parseInt(match[0], 10) : 0;
+      });
+      
+      // Get the highest ID and add 1, or start with 1 if no courses exist
+      const nextId = numericIds.length > 0 ? Math.max(...numericIds) + 1 : 1;
+      
+      // Format the ID as "C{number}"
+      return `C${nextId}`;
+    } catch (error) {
+      console.error("Error getting next available course ID:", error);
+      // Fallback to a timestamp-based ID if something goes wrong
+      return `C${new Date().getTime().toString().slice(-5)}`;
     }
   }
 

@@ -1,12 +1,13 @@
 
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import googleSheetsAPI from '@/utils/googleSheetsAPI';
+import { Loader2 } from 'lucide-react';
 
 interface AddCourseDialogProps {
   open: boolean;
@@ -19,6 +20,27 @@ const AddCourseDialog = ({ open, onOpenChange, onCourseAdded }: AddCourseDialogP
   const [courseName, setCourseName] = useState('');
   const [teacher, setTeacher] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingId, setIsLoadingId] = useState(false);
+
+  // Fetch the next available course ID when the dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchNextCourseId();
+    }
+  }, [open]);
+
+  const fetchNextCourseId = async () => {
+    try {
+      setIsLoadingId(true);
+      const nextId = await googleSheetsAPI.getNextAvailableCourseId();
+      setCourseId(nextId);
+    } catch (error) {
+      console.error('Error fetching next course ID:', error);
+      toast.error('Impossibile generare ID corso automatico');
+    } finally {
+      setIsLoadingId(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,12 +94,24 @@ const AddCourseDialog = ({ open, onOpenChange, onCourseAdded }: AddCourseDialogP
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-2">
             <Label htmlFor="courseId">ID Corso</Label>
-            <Input
-              id="courseId"
-              value={courseId}
-              onChange={(e) => setCourseId(e.target.value)}
-              placeholder="C123"
-            />
+            <div className="relative">
+              <Input
+                id="courseId"
+                value={courseId}
+                readOnly
+                disabled
+                className="bg-muted"
+                placeholder={isLoadingId ? "Generazione ID..." : "ID corso"}
+              />
+              {isLoadingId && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              ID corso generato automaticamente
+            </p>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="courseName">Nome Corso</Label>
@@ -98,7 +132,7 @@ const AddCourseDialog = ({ open, onOpenChange, onCourseAdded }: AddCourseDialogP
             />
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || isLoadingId}>
               {isSubmitting ? 'Salvataggio...' : 'Salva'}
             </Button>
           </DialogFooter>
