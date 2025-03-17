@@ -14,6 +14,19 @@ export type AttendanceRecord = {
   present: boolean;
 };
 
+// Mock data for attendance records
+const mockAttendanceRecords: AttendanceRecord[] = [
+  { studentId: 'S1001', courseId: 'C001', date: '2023-05-01', present: true },
+  { studentId: 'S1002', courseId: 'C001', date: '2023-05-01', present: true },
+  { studentId: 'S1003', courseId: 'C002', date: '2023-05-01', present: true },
+  { studentId: 'S1001', courseId: 'C001', date: '2023-05-02', present: true },
+  { studentId: 'S1004', courseId: 'C001', date: '2023-05-02', present: true },
+  { studentId: 'S1005', courseId: 'C002', date: '2023-05-02', present: true },
+  { studentId: 'S1006', courseId: 'C003', date: '2023-05-02', present: true },
+  { studentId: 'S1007', courseId: 'C001', date: '2023-05-03', present: true },
+  { studentId: 'S1008', courseId: 'C001', date: '2023-05-03', present: true },
+];
+
 // Fallback mock data in case the API isn't configured
 const mockStudents: Student[] = [
   { id: 'S1001', name: 'Marco Rossi', courses: ['C001', 'C003'] },
@@ -277,27 +290,68 @@ class GoogleSheetsAPI {
       await this.authenticate();
     }
 
-    // Get all attendance records for this course
-    const courseAttendance = mockAttendance.filter(record => record.courseId === courseId);
-    
-    // Get unique dates when attendance was taken
-    const dates = [...new Set(courseAttendance.map(record => record.date))];
-    
-    // Get total number of students in this course
-    const totalStudents = mockStudents.filter(s => s.courses.includes(courseId)).length;
-    
-    // Calculate attendance stats for each date
-    return dates.map(date => {
-      const attendanceCount = courseAttendance.filter(record => 
-        record.date === date && record.present
-      ).length;
+    // If not authenticated or offline, use mock data
+    if (!this.isAuthenticated || !this.isOnline) {
+      // Get all attendance records for this course
+      const courseAttendance = mockAttendanceRecords.filter(record => record.courseId === courseId);
       
-      return {
-        date: new Date(date).toLocaleDateString(),
-        count: attendanceCount,
-        percentage: Math.round((attendanceCount / totalStudents) * 100)
-      };
-    });
+      // Get unique dates when attendance was taken
+      const dates = [...new Set(courseAttendance.map(record => record.date))];
+      
+      // Get total number of students in this course
+      const totalStudents = mockStudents.filter(s => s.courses.includes(courseId)).length;
+      
+      // Calculate attendance stats for each date
+      return dates.map(date => {
+        const attendanceCount = courseAttendance.filter(record => 
+          record.date === date && record.present
+        ).length;
+        
+        return {
+          date: new Date(date).toLocaleDateString(),
+          count: attendanceCount,
+          percentage: Math.round((attendanceCount / totalStudents) * 100)
+        };
+      });
+    }
+
+    try {
+      // Use the Apps Script URL to fetch real data
+      const response = await fetch(
+        `${this.appsScriptUrl}?action=getAttendanceStats&courseId=${encodeURIComponent(courseId)}`,
+        { mode: 'cors' }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Ensure proper date formatting
+      return data.map((item: any) => ({
+        ...item,
+        date: new Date(item.date as string).toLocaleDateString(),
+      }));
+    } catch (error) {
+      console.error("Error fetching attendance stats:", error);
+      // Fallback to mock data using the same code as above
+      const courseAttendance = mockAttendanceRecords.filter(record => record.courseId === courseId);
+      const dates = [...new Set(courseAttendance.map(record => record.date))];
+      const totalStudents = mockStudents.filter(s => s.courses.includes(courseId)).length;
+      
+      return dates.map(date => {
+        const attendanceCount = courseAttendance.filter(record => 
+          record.date === date && record.present
+        ).length;
+        
+        return {
+          date: new Date(date).toLocaleDateString(),
+          count: attendanceCount,
+          percentage: Math.round((attendanceCount / totalStudents) * 100)
+        };
+      });
+    }
   }
 
   private getNextClassDate(): string {
