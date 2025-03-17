@@ -2,21 +2,23 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Search, Filter, Loader2 } from 'lucide-react';
+import { Search, Filter, Loader2, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import Header from '@/components/Header';
-import CourseCard, { Course } from '@/components/CourseCard';
+import CourseCard, { Course as CourseCardType } from '@/components/CourseCard';
 import AttendanceStats from '@/components/AttendanceStats';
-import googleSheetsAPI from '@/utils/googleSheetsAPI';
+import AddCourseDialog from '@/components/AddCourseDialog';
+import googleSheetsAPI, { Course as ApiCourse } from '@/utils/googleSheetsAPI';
 
 const CoursesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<CourseCardType | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const { data: courses, isLoading: isLoadingCourses } = useQuery({
+  const { data: courses, isLoading: isLoadingCourses, refetch } = useQuery({
     queryKey: ['courses'],
     queryFn: () => googleSheetsAPI.getCourses(),
   });
@@ -27,17 +29,25 @@ const CoursesPage = () => {
     enabled: !!selectedCourse,
   });
 
+  // Map API courses to CourseCard type
+  const mappedCourses: CourseCardType[] = courses?.map(course => ({
+    id: course.id,
+    name: course.name,
+    totalStudents: course.totalStudents,
+    // Add any other properties if needed
+  })) || [];
+
   // Filter courses based on search query
-  const filteredCourses = courses?.filter(course => 
+  const filteredCourses = mappedCourses.filter(course => 
     course.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Select first course by default when data loads
   useEffect(() => {
-    if (courses?.length && !selectedCourse) {
-      setSelectedCourse(courses[0]);
+    if (mappedCourses.length && !selectedCourse) {
+      setSelectedCourse(mappedCourses[0]);
     }
-  }, [courses, selectedCourse]);
+  }, [mappedCourses, selectedCourse]);
 
   // Staggered animation for courses
   const containerVariants = {
@@ -63,16 +73,26 @@ const CoursesPage = () => {
     }
   };
 
+  const handleCourseAdded = () => {
+    refetch();
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       
       <main className="flex-1 container max-w-7xl px-4 py-6">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-2">Corsi e Presenze</h1>
-          <p className="text-muted-foreground">
-            Visualizza e gestisci le statistiche di presenza ai corsi
-          </p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">Corsi e Presenze</h1>
+            <p className="text-muted-foreground">
+              Visualizza e gestisci le statistiche di presenza ai corsi
+            </p>
+          </div>
+          <Button onClick={() => setIsAddDialogOpen(true)} className="flex items-center gap-1">
+            <Plus className="h-4 w-4" />
+            <span>Aggiungi Corso</span>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -138,7 +158,7 @@ const CoursesPage = () => {
                     <div>
                       <h2 className="text-xl font-semibold mb-1">{selectedCourse.name}</h2>
                       <p className="text-sm text-muted-foreground">
-                        {selectedCourse.totalStudents} studenti iscritti
+                        {selectedCourse.totalStudents || 0} studenti iscritti
                       </p>
                     </div>
                     
@@ -178,6 +198,12 @@ const CoursesPage = () => {
           </div>
         </div>
       </main>
+      
+      <AddCourseDialog 
+        open={isAddDialogOpen} 
+        onOpenChange={setIsAddDialogOpen} 
+        onCourseAdded={handleCourseAdded}
+      />
     </div>
   );
 };

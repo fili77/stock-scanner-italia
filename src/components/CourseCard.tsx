@@ -8,7 +8,7 @@ import { Users, Clock, CalendarDays } from 'lucide-react';
 export type Course = {
   id: string;
   name: string;
-  totalStudents: number;
+  totalStudents?: number; // Make totalStudents optional
   lastScanned?: string;
   attendanceRate?: number;
   nextClass?: string;
@@ -37,7 +37,7 @@ const CourseCard = ({ course, onClick, selected = false, className }: CourseCard
             <CardTitle className="text-lg">{course.name}</CardTitle>
             <CardDescription className="flex items-center mt-1 gap-1">
               <Users className="h-3.5 w-3.5" />
-              <span>{course.totalStudents} students</span>
+              <span>{course.totalStudents || 0} students</span>
             </CardDescription>
           </div>
           {course.attendanceRate !== undefined && (
