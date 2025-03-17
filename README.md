@@ -1,8 +1,27 @@
+
 # Welcome to your Lovable project
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/e1684f78-bfa5-4a30-8a87-d66d3cdd2af6
+
+## Come scaricare il codice dell'applicazione
+
+Ci sono diversi modi per scaricare il codice di questo progetto:
+
+1. **Scaricare come ZIP dalla piattaforma Lovable**:
+   - Fai clic sul nome del progetto nell'angolo in alto a sinistra
+   - Seleziona "Share" o "Condividi" dal menu a discesa
+   - Fai clic su "Download as ZIP" o "Scarica come ZIP"
+
+2. **Utilizzare GitHub** (se hai connesso il progetto):
+   - Clicca sull'icona di GitHub nell'angolo in alto a destra
+   - Copia il repository sul tuo account GitHub
+   - Clona il repository in locale
+
+3. **Dev Mode**:
+   - Attiva la modalità sviluppatore "Dev Mode" nell'angolo in alto a sinistra
+   - Potrai vedere tutto il codice sorgente e copiarlo manualmente
 
 ## How can I edit this code?
 
@@ -67,3 +86,4 @@ Simply open [Lovable](https://lovable.dev/projects/e1684f78-bfa5-4a30-8a87-d66d3
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+
