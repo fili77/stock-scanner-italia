@@ -10,8 +10,9 @@ export const CleanScriptCodeBlock = () => {
 
   // Script code as pure vanilla JavaScript - compatible with Google Apps Script
   // No import/export statements, no ES6 module syntax
-  const scriptCode = `// QUESTO È UN CODICE VANILLA JAVASCRIPT - NON MODIFICARE
-// NON AGGIUNGERE IMPORT O EXPORT - Apps Script non supporta questa sintassi
+  const scriptCode = `// ATTENZIONE: QUESTO È CODICE VANILLA JAVASCRIPT PER APPS SCRIPT
+// NON AGGIUNGERE IMPORT O EXPORT - Apps Script non li supporta
+// INCOLLA QUESTO CODICE ESATTAMENTE COSÌ COM'È
 
 function doGet(e) {
   var action = e.parameter.action;
@@ -361,16 +362,16 @@ function getAttendanceStats(courseId) {
       <div className="rounded-md bg-red-50 p-3 text-red-800 dark:bg-red-950 dark:text-red-300 text-xs">
         <p className="font-bold flex items-center gap-1">
           <span className="text-red-600 text-base">⚠️</span>
-          Risolvere l'errore "Cannot use import statement outside a module":
+          Risolvi l'errore "Cannot use import statement outside a module":
         </p>
         <ol className="list-decimal list-inside mt-1 space-y-1">
-          <li>Il codice Apps Script deve essere puro JavaScript, NO import/export</li>
+          <li>Il codice Apps Script deve essere puro JavaScript, <strong>NIENTE</strong> import/export</li>
           <li>Clicca sul pulsante "Copia Script" sopra</li>
           <li>Nel tuo Google Sheet, vai su "Extensions" &gt; "Apps Script"</li>
           <li>Cancella TUTTO il codice esistente nell'editor Apps Script</li>
           <li>Incolla il codice copiato ESATTAMENTE come fornito</li>
           <li>Salva (Ctrl+S o Cmd+S)</li>
-          <li>Apps Script deve contenere solo funzioni JavaScript, no imports</li>
+          <li>Se vedi ancora errori, verifica di non aver modificato il codice</li>
         </ol>
       </div>
     </div>
