@@ -17,14 +17,14 @@ const AttendanceSheet = ({ courseId, courseName }: AttendanceSheetProps) => {
   const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Ottenere la lista degli studenti per questo corso
+  // Fetch students for this course
   const { data: students = [], isLoading } = useQuery({
     queryKey: ['students', courseId],
     queryFn: () => googleSheetsAPI.getStudents(courseId),
     enabled: !!courseId,
   });
 
-  // Ottieni il nome del docente (simulato per questo esempio)
+  // Get teacher name (simulated for this example)
   const getTeacherName = (courseId: string) => {
     const teacherMap = {
       'C001': 'Prof. Mario Bianchi',

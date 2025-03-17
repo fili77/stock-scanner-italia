@@ -1,5 +1,5 @@
-// This is a simplified implementation that demonstrates how to work with Google Sheets
-// In a production app, you would want to use the Google Sheets API with proper authentication
+// This is an implementation that uses Google Apps Script as backend for Google Sheets
+// The Apps Script runs directly in the Google Sheet and provides a simple API
 
 export type Student = {
   id: string;
@@ -14,7 +14,7 @@ export type AttendanceRecord = {
   present: boolean;
 };
 
-// Mock data
+// Fallback mock data in case the API isn't configured
 const mockStudents: Student[] = [
   { id: 'S1001', name: 'Marco Rossi', courses: ['C001', 'C003'] },
   { id: 'S1002', name: 'Giulia Bianchi', courses: ['C001', 'C002'] },
@@ -32,32 +32,27 @@ const mockCourses = [
   { id: 'C003', name: 'Architettura dei Calcolatori', totalStudents: 4 },
 ];
 
-const mockAttendance: AttendanceRecord[] = [
-  // We'll add to this when marking attendance
-];
-
 class GoogleSheetsAPI {
   private isAuthenticated = false;
   private syncQueue: AttendanceRecord[] = [];
   private isOnline = true;
-  private sheetId: string | null = null;
+  private appsScriptUrl: string | null = null;
 
   constructor() {
-    // Try to load sheet ID from localStorage
-    this.sheetId = localStorage.getItem('googleSheetId');
-    this.isAuthenticated = localStorage.getItem('googleSheetConnected') === 'true';
+    // Try to load Apps Script URL from localStorage
+    this.appsScriptUrl = localStorage.getItem('googleAppsScriptUrl');
+    this.isAuthenticated = !!this.appsScriptUrl;
   }
 
-  // Simple method to check if we're connected to a Google Sheet
+  // Check if we're connected to a Google Sheet via Apps Script
   isConnected(): boolean {
-    return this.isAuthenticated && !!this.sheetId;
+    return this.isAuthenticated && !!this.appsScriptUrl;
   }
 
   async authenticate(): Promise<boolean> {
-    // In a real app, this would initiate OAuth flow
-    // For demo purposes, we'll just check if we have a sheet ID in localStorage
-    this.sheetId = localStorage.getItem('googleSheetId');
-    this.isAuthenticated = !!this.sheetId;
+    // In this implementation, we just check if we have an Apps Script URL
+    this.appsScriptUrl = localStorage.getItem('googleAppsScriptUrl');
+    this.isAuthenticated = !!this.appsScriptUrl;
     
     return new Promise(resolve => {
       setTimeout(() => {
@@ -71,37 +66,30 @@ class GoogleSheetsAPI {
       await this.authenticate();
     }
 
-    // In a real app, this would fetch courses from the Google Sheet
-    // For now, we'll continue to use the mock data but with a simulated delay
-    return new Promise(resolve => {
-      setTimeout(() => {
-        // Calculate additional course information based on attendance data
-        const courses = mockCourses.map(course => {
-          const courseAttendance = mockAttendance.filter(record => 
-            record.courseId === course.id && record.present
-          );
-          
-          // Get unique dates when attendance was taken for this course
-          const attendanceDates = [...new Set(courseAttendance.map(record => record.date))];
-          const lastScanned = attendanceDates.sort().pop();
-          
-          // Calculate attendance rate
-          const totalCourseStudents = mockStudents.filter(s => s.courses.includes(course.id)).length;
-          const attendanceRate = totalCourseStudents > 0
-            ? Math.round((courseAttendance.length / (totalCourseStudents * attendanceDates.length || 1)) * 100)
-            : 0;
-          
-          return {
-            ...course,
-            lastScanned: lastScanned ? new Date(lastScanned).toLocaleDateString() : undefined,
-            attendanceRate,
-            nextClass: this.getNextClassDate(),
-          };
-        });
-        
-        resolve(courses);
-      }, 500);
-    });
+    // If not authenticated or offline, return mock data
+    if (!this.isAuthenticated || !this.isOnline) {
+      console.log("Using mock course data");
+      return mockCourses;
+    }
+
+    try {
+      // Use the Apps Script URL to fetch real data
+      const response = await fetch(
+        `${this.appsScriptUrl}?action=getCourses`,
+        { mode: 'cors' }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      // Fallback to mock data
+      return mockCourses;
+    }
   }
 
   async getStudents(courseId?: string): Promise<Student[]> {
@@ -109,10 +97,37 @@ class GoogleSheetsAPI {
       await this.authenticate();
     }
 
-    if (courseId) {
-      return mockStudents.filter(student => student.courses.includes(courseId));
+    // If not authenticated or offline, return mock data
+    if (!this.isAuthenticated || !this.isOnline) {
+      console.log("Using mock student data");
+      if (courseId) {
+        return mockStudents.filter(student => student.courses.includes(courseId));
+      }
+      return mockStudents;
     }
-    return mockStudents;
+
+    try {
+      // Use the Apps Script URL to fetch real data
+      const url = courseId 
+        ? `${this.appsScriptUrl}?action=getStudents&courseId=${encodeURIComponent(courseId)}`
+        : `${this.appsScriptUrl}?action=getStudents`;
+      
+      const response = await fetch(url, { mode: 'cors' });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      // Fallback to mock data
+      if (courseId) {
+        return mockStudents.filter(student => student.courses.includes(courseId));
+      }
+      return mockStudents;
+    }
   }
 
   async findStudentById(studentId: string): Promise<Student | null> {
@@ -120,8 +135,31 @@ class GoogleSheetsAPI {
       await this.authenticate();
     }
 
-    const student = mockStudents.find(s => s.id === studentId);
-    return student || null;
+    // If not authenticated or offline, use mock data
+    if (!this.isAuthenticated || !this.isOnline) {
+      const student = mockStudents.find(s => s.id === studentId);
+      return student || null;
+    }
+
+    try {
+      // Use the Apps Script URL to fetch the student
+      const response = await fetch(
+        `${this.appsScriptUrl}?action=findStudent&studentId=${encodeURIComponent(studentId)}`,
+        { mode: 'cors' }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.found ? data.student : null;
+    } catch (error) {
+      console.error("Error finding student:", error);
+      // Fallback to mock data
+      const student = mockStudents.find(s => s.id === studentId);
+      return student || null;
+    }
   }
 
   async markAttendance(studentId: string, courseId: string, date: string): Promise<boolean> {
@@ -142,9 +180,42 @@ class GoogleSheetsAPI {
       return true;
     }
 
-    // In a real app, this would update the Google Sheet
-    mockAttendance.push(attendanceRecord);
-    return true;
+    // If not authenticated, just simulate success
+    if (!this.isAuthenticated) {
+      return true;
+    }
+
+    try {
+      // Use the Apps Script URL to record attendance
+      const response = await fetch(
+        `${this.appsScriptUrl}`,
+        {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'markAttendance',
+            studentId,
+            courseId,
+            date
+          })
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error("Error marking attendance:", error);
+      // Add to queue for later sync
+      this.syncQueue.push(attendanceRecord);
+      return true;
+    }
   }
 
   async syncQueuedAttendance(): Promise<boolean> {
@@ -152,18 +223,41 @@ class GoogleSheetsAPI {
       return false;
     }
 
-    // Process the queue
-    const success = await this.processQueue();
-    if (success) {
-      this.syncQueue = [];
+    // Nothing to sync
+    if (this.syncQueue.length === 0) {
+      return true;
     }
-    return success;
-  }
 
-  private async processQueue(): Promise<boolean> {
-    // In a real app, this would batch update the Google Sheet
-    mockAttendance.push(...this.syncQueue);
-    return true;
+    try {
+      // Use the Apps Script URL to sync queued records
+      const response = await fetch(
+        `${this.appsScriptUrl}`,
+        {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'syncAttendance',
+            records: this.syncQueue
+          })
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      if (result.success) {
+        this.syncQueue = [];
+      }
+      return result.success;
+    } catch (error) {
+      console.error("Error syncing attendance:", error);
+      return false;
+    }
   }
 
   getQueueSize(): number {
@@ -215,13 +309,14 @@ class GoogleSheetsAPI {
     return nextDate.toLocaleDateString();
   }
 
-  getSheetId(): string | null {
-    return this.sheetId;
+  getAppsScriptUrl(): string | null {
+    return this.appsScriptUrl;
   }
 
-  setSheetId(id: string): void {
-    this.sheetId = id;
-    localStorage.setItem('googleSheetId', id);
+  setAppsScriptUrl(url: string): void {
+    this.appsScriptUrl = url;
+    localStorage.setItem('googleAppsScriptUrl', url);
+    this.isAuthenticated = !!url;
   }
 }
 

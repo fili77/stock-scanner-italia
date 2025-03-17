@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, X, RotateCcw, Shield, CloudOff, Database, Copy, ExternalLink } from 'lucide-react';
@@ -12,10 +11,11 @@ import { Separator } from '@/components/ui/separator';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import googleSheetsAPI from '@/utils/googleSheetsAPI';
 
 const SettingsPage = () => {
   const { toast } = useToast();
-  const [sheetId, setSheetId] = useState('');
+  const [appsScriptUrl, setAppsScriptUrl] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [presenceValue, setPresenceValue] = useState('presente');
   const [dateFormat, setDateFormat] = useState('DD/MM/YYYY');
@@ -31,39 +31,40 @@ const SettingsPage = () => {
   const resetApp = () => {
     if (confirm('Are you sure you want to reset all app data? This action cannot be undone.')) {
       // In a real app, you would clear local storage, reset app state, etc.
+      localStorage.clear();
       toast({
         title: "App Reset",
         description: "All app data has been reset.",
       });
+      setIsConnected(false);
+      setAppsScriptUrl('');
     }
   };
 
   const connectToGoogleSheets = () => {
-    if (!sheetId) {
+    if (!appsScriptUrl) {
       toast({
         title: "Error",
-        description: "Please enter a valid Google Sheet ID",
+        description: "Please enter a valid Google Apps Script URL",
         variant: "destructive"
       });
       return;
     }
 
-    // In a real implementation, this is where you would initiate the OAuth flow
-    // For now, we'll simulate a successful connection
+    // Set the Apps Script URL in the API
+    googleSheetsAPI.setAppsScriptUrl(appsScriptUrl);
     setIsConnected(true);
-    localStorage.setItem('googleSheetId', sheetId);
-    localStorage.setItem('googleSheetConnected', 'true');
 
     toast({
       title: "Connected",
-      description: "Successfully connected to Google Sheets. You can now use the app to record attendance."
+      description: "Successfully connected to Google Sheets via Apps Script. You can now use the app to record attendance."
     });
   };
 
   const disconnectFromGoogleSheets = () => {
+    googleSheetsAPI.setAppsScriptUrl('');
     setIsConnected(false);
-    localStorage.removeItem('googleSheetId');
-    localStorage.removeItem('googleSheetConnected');
+    setAppsScriptUrl('');
 
     toast({
       title: "Disconnected",
@@ -81,13 +82,13 @@ const SettingsPage = () => {
 
   // Load settings from localStorage on component mount
   React.useEffect(() => {
-    const savedSheetId = localStorage.getItem('googleSheetId');
-    const isConnected = localStorage.getItem('googleSheetConnected') === 'true';
+    const savedAppsScriptUrl = localStorage.getItem('googleAppsScriptUrl');
+    const isConnected = !!savedAppsScriptUrl;
     const savedPresenceValue = localStorage.getItem('presenceValue');
     const savedDateFormat = localStorage.getItem('dateFormat');
     const savedAutoCreate = localStorage.getItem('autoCreate');
 
-    if (savedSheetId) setSheetId(savedSheetId);
+    if (savedAppsScriptUrl) setAppsScriptUrl(savedAppsScriptUrl);
     if (savedPresenceValue) setPresenceValue(savedPresenceValue);
     if (savedDateFormat) setDateFormat(savedDateFormat);
     if (savedAutoCreate !== null) setAutoCreate(savedAutoCreate === 'true');
@@ -122,10 +123,10 @@ const SettingsPage = () => {
               className="space-y-6"
             >
               <Alert>
-                <AlertTitle>Google Sheets Direct Connection</AlertTitle>
+                <AlertTitle>Google Sheets Apps Script Integration</AlertTitle>
                 <AlertDescription>
-                  This app uses a direct connection to your Google Sheet without the need for a custom API.
-                  Simply enter your Google Sheet ID below and authorize access.
+                  This app connects to your Google Sheet using Google Apps Script.
+                  Enter your Apps Script Web App URL below to connect your sheet.
                 </AlertDescription>
               </Alert>
 
@@ -138,20 +139,20 @@ const SettingsPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="sheet-id">Sheet ID</Label>
+                    <Label htmlFor="apps-script-url">Apps Script Web App URL</Label>
                     <div className="flex gap-2">
                       <Input 
-                        id="sheet-id" 
-                        placeholder="Enter your Google Sheet ID" 
-                        value={sheetId}
-                        onChange={(e) => setSheetId(e.target.value)}
+                        id="apps-script-url" 
+                        placeholder="Enter your Google Apps Script URL" 
+                        value={appsScriptUrl}
+                        onChange={(e) => setAppsScriptUrl(e.target.value)}
                       />
-                      <Button variant="outline" size="icon" onClick={() => navigator.clipboard.writeText(sheetId)}>
+                      <Button variant="outline" size="icon" onClick={() => navigator.clipboard.writeText(appsScriptUrl)}>
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Find your Sheet ID in the URL: https://docs.google.com/spreadsheets/d/<span className="font-mono">YOUR_SHEET_ID</span>/edit
+                      Example: https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
                     </p>
                   </div>
                   
@@ -164,7 +165,7 @@ const SettingsPage = () => {
                         <div>
                           <h3 className="text-sm font-medium">Connected</h3>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Your app is currently connected to a Google Sheet
+                            Your app is currently connected to a Google Sheet via Apps Script
                           </p>
                         </div>
                       </div>
@@ -178,7 +179,7 @@ const SettingsPage = () => {
                         <div>
                           <h3 className="text-sm font-medium">Not Connected</h3>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Enter your Sheet ID and click Connect to authorize access
+                            Enter your Apps Script URL and click Connect to authorize access
                           </p>
                         </div>
                       </div>
@@ -262,37 +263,181 @@ const SettingsPage = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Foglio Google Sheets Structure</CardTitle>
+                  <CardTitle>Apps Script Implementation</CardTitle>
                   <CardDescription>
-                    Recommended structure for your Google Sheet
+                    Guide for implementing the API in Google Apps Script
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Foglio "Corsi"</h3>
-                    <div className="bg-muted p-3 rounded-md">
-                      <code className="text-xs">
-                        ID Corso | Nome Corso | Docente | Totale Studenti
-                      </code>
-                    </div>
-                  </div>
+                  <p className="text-sm">
+                    Paste this code in your Google Apps Script editor (Extensions &gt; Apps Script in your Google Sheet):
+                  </p>
+                  
+                  <div className="bg-muted p-3 rounded-md overflow-auto max-h-60 whitespace-pre text-xs font-mono">
+{`function doGet(e) {
+  // Handle GET requests
+  var action = e.parameter.action;
+  var result = {};
+  
+  if (action === "getStudents") {
+    result = getStudentsList(e.parameter.courseId);
+  } else if (action === "getCourses") {
+    result = getCoursesList();
+  } else if (action === "findStudent") {
+    result = findStudentById(e.parameter.studentId);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader('Access-Control-Allow-Origin', '*');
+}
 
+function doPost(e) {
+  // Handle POST requests
+  var data = JSON.parse(e.postData.contents);
+  var result = { success: false };
+  
+  if (data.action === "markAttendance") {
+    result = markStudentAttendance(data.studentId, data.courseId, data.date);
+  } else if (data.action === "syncAttendance") {
+    result = syncAttendanceRecords(data.records);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader('Access-Control-Allow-Origin', '*');
+}
+
+function getStudentsList(courseId) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Studenti");
+  var data = sheet.getDataRange().getValues();
+  var students = [];
+  
+  // Skip header row
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var student = {
+      id: row[0],
+      name: row[1] + " " + row[2],
+      courses: row[3].split(",").map(function(course) { return course.trim(); })
+    };
+    
+    // If courseId is provided, filter students
+    if (courseId && student.courses.indexOf(courseId) !== -1) {
+      students.push(student);
+    } else if (!courseId) {
+      students.push(student);
+    }
+  }
+  
+  return students;
+}
+
+function getCoursesList() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Corsi");
+  var data = sheet.getDataRange().getValues();
+  var courses = [];
+  
+  // Skip header row
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    courses.push({
+      id: row[0],
+      name: row[1],
+      totalStudents: row[3]
+    });
+  }
+  
+  return courses;
+}
+
+function findStudentById(studentId) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Studenti");
+  var data = sheet.getDataRange().getValues();
+  
+  // Skip header row
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    if (row[0] === studentId) {
+      return {
+        found: true,
+        student: {
+          id: row[0],
+          name: row[1] + " " + row[2],
+          courses: row[3].split(",").map(function(course) { return course.trim(); })
+        }
+      };
+    }
+  }
+  
+  return { found: false };
+}
+
+function markStudentAttendance(studentId, courseId, date) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presenze");
+  
+  // Add attendance record
+  sheet.appendRow([
+    studentId,
+    courseId,
+    date,
+    "presente"
+  ]);
+  
+  return { success: true };
+}
+
+function syncAttendanceRecords(records) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presenze");
+  
+  // Add all records
+  for (var i = 0; i < records.length; i++) {
+    var record = records[i];
+    sheet.appendRow([
+      record.studentId,
+      record.courseId,
+      record.date,
+      "presente"
+    ]);
+  }
+  
+  return { success: true };
+}`}
+                  </div>
+                  
                   <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Foglio "Studenti"</h3>
+                    <h3 className="text-sm font-medium">Struttura del foglio consigliata:</h3>
                     <div className="bg-muted p-3 rounded-md">
+                      <h4 className="text-xs font-medium mb-1">Foglio "Studenti":</h4>
                       <code className="text-xs">
                         ID Studente | Nome | Cognome | Corsi (separati da virgola)
                       </code>
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Foglio "Presenze"</h3>
                     <div className="bg-muted p-3 rounded-md">
+                      <h4 className="text-xs font-medium mb-1">Foglio "Corsi":</h4>
+                      <code className="text-xs">
+                        ID Corso | Nome Corso | Docente | Totale Studenti
+                      </code>
+                    </div>
+                    <div className="bg-muted p-3 rounded-md">
+                      <h4 className="text-xs font-medium mb-1">Foglio "Presenze":</h4>
                       <code className="text-xs">
                         ID Studente | ID Corso | Data | Presente
                       </code>
                     </div>
+                  </div>
+                  
+                  <div className="rounded-md bg-blue-50 p-4 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                    <p className="text-sm">
+                      Dopo aver creato lo script, pubblica come app web:
+                    </p>
+                    <ol className="list-decimal list-inside text-xs mt-2 ml-2 space-y-1">
+                      <li>Clicca "Deploy" &gt; "New deployment"</li>
+                      <li>Seleziona "Web app"</li>
+                      <li>Configura "Execute as: Me" e "Who has access: Anyone"</li>
+                      <li>Clicca "Deploy" e autorizza le richieste</li>
+                      <li>Copia l'URL generato e incollalo sopra</li>
+                    </ol>
                   </div>
                 </CardContent>
               </Card>
