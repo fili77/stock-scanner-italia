@@ -2,10 +2,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Scan, Settings, FileSpreadsheet, ImagePlus, UserPlus } from 'lucide-react';
+import { BookOpen, Scan, Settings, FileSpreadsheet, ImagePlus, UserPlus, BookPlus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Header from '@/components/Header';
 import SignatureSheetSelector from '@/components/SignatureSheetSelector';
+import AddCourseDialog from '@/components/AddCourseDialog';
 
 const Index = () => {
   const menuItems = [
@@ -62,6 +63,7 @@ const Index = () => {
   };
 
   const [showSignatureSheet, setShowSignatureSheet] = useState(false);
+  const [addCourseDialogOpen, setAddCourseDialogOpen] = useState(false);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -79,7 +81,7 @@ const Index = () => {
         
         {!showSignatureSheet ? (
           <>
-            <div className="mb-8">
+            <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="hover:bg-accent transition-colors duration-300 cursor-pointer" onClick={() => setShowSignatureSheet(true)}>
                 <CardContent className="p-6 flex items-center space-x-4">
                   <div className="p-3 rounded-full bg-amber-600 text-white">
@@ -88,6 +90,18 @@ const Index = () => {
                   <div>
                     <h2 className="text-lg font-semibold">Stampa Foglio Firme</h2>
                     <p className="text-sm text-muted-foreground">Genera e stampa un foglio firme per un corso</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:bg-accent transition-colors duration-300 cursor-pointer" onClick={() => setAddCourseDialogOpen(true)}>
+                <CardContent className="p-6 flex items-center space-x-4">
+                  <div className="p-3 rounded-full bg-teal-600 text-white">
+                    <BookPlus className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold">Aggiungi Corso</h2>
+                    <p className="text-sm text-muted-foreground">Aggiungi un nuovo corso al registro</p>
                   </div>
                 </CardContent>
               </Card>
@@ -117,6 +131,11 @@ const Index = () => {
           </div>
         )}
       </main>
+
+      <AddCourseDialog 
+        open={addCourseDialogOpen} 
+        onOpenChange={setAddCourseDialogOpen} 
+      />
     </div>
   );
 };

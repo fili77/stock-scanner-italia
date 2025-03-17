@@ -14,6 +14,13 @@ export type AttendanceRecord = {
   present: boolean;
 };
 
+export type Course = {
+  id: string;
+  name: string;
+  teacher?: string;
+  totalStudents?: number;
+};
+
 // Mock data for attendance records
 const mockAttendanceRecords: AttendanceRecord[] = [
   { studentId: 'S1001', courseId: 'C001', date: '2023-05-01', present: true },
@@ -40,9 +47,9 @@ const mockStudents: Student[] = [
 ];
 
 const mockCourses = [
-  { id: 'C001', name: 'Programmazione Web', totalStudents: 5 },
-  { id: 'C002', name: 'Intelligenza Artificiale', totalStudents: 4 },
-  { id: 'C003', name: 'Architettura dei Calcolatori', totalStudents: 4 },
+  { id: 'C001', name: 'Programmazione Web', teacher: 'Mario Rossi', totalStudents: 5 },
+  { id: 'C002', name: 'Intelligenza Artificiale', teacher: 'Laura Bianchi', totalStudents: 4 },
+  { id: 'C003', name: 'Architettura dei Calcolatori', teacher: 'Giovanni Verdi', totalStudents: 4 },
 ];
 
 class GoogleSheetsAPI {
@@ -74,7 +81,7 @@ class GoogleSheetsAPI {
     });
   }
 
-  async getCourses(): Promise<typeof mockCourses> {
+  async getCourses(): Promise<Course[]> {
     if (!this.isAuthenticated) {
       await this.authenticate();
     }
@@ -228,6 +235,47 @@ class GoogleSheetsAPI {
       // Add to queue for later sync
       this.syncQueue.push(attendanceRecord);
       return true;
+    }
+  }
+
+  async addCourse(courseData: { id: string; name: string; teacher: string }): Promise<boolean> {
+    if (!this.isAuthenticated) {
+      await this.authenticate();
+    }
+
+    // If not authenticated and offline, return false
+    if (!this.isAuthenticated) {
+      return false;
+    }
+
+    try {
+      // Use the Apps Script URL to add course
+      const response = await fetch(
+        `${this.appsScriptUrl}`,
+        {
+          method: 'POST',
+          mode: 'cors',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'addCourse',
+            id: courseData.id,
+            name: courseData.name,
+            teacher: courseData.teacher
+          })
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error("Error adding course:", error);
+      return false;
     }
   }
 
