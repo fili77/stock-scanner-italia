@@ -63,6 +63,8 @@ const AttendanceSheet = ({ courseId, courseName }: AttendanceSheetProps) => {
     }, 500);
   };
 
+  const isConnectedToGoogleSheets = googleSheetsAPI.isConnected();
+
   return (
     <Card className="mb-6">
       <CardContent className="p-6">
@@ -82,6 +84,13 @@ const AttendanceSheet = ({ courseId, courseName }: AttendanceSheetProps) => {
             </Button>
           </div>
         </div>
+
+        {!isConnectedToGoogleSheets && (
+          <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-md text-sm">
+            Non sei connesso a Google Sheets. Alcuni dati potrebbero non essere aggiornati.
+            Vai alle Impostazioni per configurare la connessione.
+          </div>
+        )}
 
         <div ref={printRef} className="border rounded-md p-4">
           <div className="text-center mb-6 print:mb-8">

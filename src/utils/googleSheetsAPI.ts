@@ -1,6 +1,5 @@
-
-// In a production app, you would use the Google Sheets API
-// This is a simplified mock implementation for demonstration
+// This is a simplified implementation that demonstrates how to work with Google Sheets
+// In a production app, you would want to use the Google Sheets API with proper authentication
 
 export type Student = {
   id: string;
@@ -41,14 +40,28 @@ class GoogleSheetsAPI {
   private isAuthenticated = false;
   private syncQueue: AttendanceRecord[] = [];
   private isOnline = true;
+  private sheetId: string | null = null;
 
-  // Authentication would normally happen here with OAuth
+  constructor() {
+    // Try to load sheet ID from localStorage
+    this.sheetId = localStorage.getItem('googleSheetId');
+    this.isAuthenticated = localStorage.getItem('googleSheetConnected') === 'true';
+  }
+
+  // Simple method to check if we're connected to a Google Sheet
+  isConnected(): boolean {
+    return this.isAuthenticated && !!this.sheetId;
+  }
+
   async authenticate(): Promise<boolean> {
-    // Mock implementation
+    // In a real app, this would initiate OAuth flow
+    // For demo purposes, we'll just check if we have a sheet ID in localStorage
+    this.sheetId = localStorage.getItem('googleSheetId');
+    this.isAuthenticated = !!this.sheetId;
+    
     return new Promise(resolve => {
       setTimeout(() => {
-        this.isAuthenticated = true;
-        resolve(true);
+        resolve(this.isAuthenticated);
       }, 1000);
     });
   }
@@ -58,28 +71,36 @@ class GoogleSheetsAPI {
       await this.authenticate();
     }
 
-    // Calculate additional course information based on attendance data
-    return mockCourses.map(course => {
-      const courseAttendance = mockAttendance.filter(record => 
-        record.courseId === course.id && record.present
-      );
-      
-      // Get unique dates when attendance was taken for this course
-      const attendanceDates = [...new Set(courseAttendance.map(record => record.date))];
-      const lastScanned = attendanceDates.sort().pop();
-      
-      // Calculate attendance rate
-      const totalCourseStudents = mockStudents.filter(s => s.courses.includes(course.id)).length;
-      const attendanceRate = totalCourseStudents > 0
-        ? Math.round((courseAttendance.length / (totalCourseStudents * attendanceDates.length || 1)) * 100)
-        : 0;
-      
-      return {
-        ...course,
-        lastScanned: lastScanned ? new Date(lastScanned).toLocaleDateString() : undefined,
-        attendanceRate,
-        nextClass: this.getNextClassDate(),
-      };
+    // In a real app, this would fetch courses from the Google Sheet
+    // For now, we'll continue to use the mock data but with a simulated delay
+    return new Promise(resolve => {
+      setTimeout(() => {
+        // Calculate additional course information based on attendance data
+        const courses = mockCourses.map(course => {
+          const courseAttendance = mockAttendance.filter(record => 
+            record.courseId === course.id && record.present
+          );
+          
+          // Get unique dates when attendance was taken for this course
+          const attendanceDates = [...new Set(courseAttendance.map(record => record.date))];
+          const lastScanned = attendanceDates.sort().pop();
+          
+          // Calculate attendance rate
+          const totalCourseStudents = mockStudents.filter(s => s.courses.includes(course.id)).length;
+          const attendanceRate = totalCourseStudents > 0
+            ? Math.round((courseAttendance.length / (totalCourseStudents * attendanceDates.length || 1)) * 100)
+            : 0;
+          
+          return {
+            ...course,
+            lastScanned: lastScanned ? new Date(lastScanned).toLocaleDateString() : undefined,
+            attendanceRate,
+            nextClass: this.getNextClassDate(),
+          };
+        });
+        
+        resolve(courses);
+      }, 500);
     });
   }
 
@@ -192,6 +213,15 @@ class GoogleSheetsAPI {
     const nextDate = new Date(today);
     nextDate.setDate(today.getDate() + daysToAdd);
     return nextDate.toLocaleDateString();
+  }
+
+  getSheetId(): string | null {
+    return this.sheetId;
+  }
+
+  setSheetId(id: string): void {
+    this.sheetId = id;
+    localStorage.setItem('googleSheetId', id);
   }
 }
 
