@@ -60,8 +60,8 @@ export class ApiClient {
     };
   }
 
-  // Helper method for API requests with no-cors mode
-  protected async fetchWithNoCors(endpoint: string, method: 'GET' | 'POST' = 'GET', body?: any): Promise<any> {
+  // Helper method for API requests
+  protected async fetchApi(endpoint: string, method: 'GET' | 'POST' = 'GET', body?: any): Promise<any> {
     if (!this.appsScriptUrl) {
       throw new Error('Apps Script URL not set');
     }
@@ -71,10 +71,7 @@ export class ApiClient {
       : `${this.appsScriptUrl}${endpoint}`;
 
     try {
-      const options: RequestInit = { 
-        method,
-        mode: 'no-cors',
-      };
+      const options: RequestInit = { method };
 
       if (body) {
         options.headers = {
@@ -85,9 +82,11 @@ export class ApiClient {
 
       const response = await fetch(url, options);
       
-      // With no-cors mode, we can't access response properties
-      // So we just assume success if no error is thrown
-      return true;
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      return await response.json();
     } catch (error) {
       console.error(`Error in ${method} request to ${endpoint}:`, error);
       throw error;

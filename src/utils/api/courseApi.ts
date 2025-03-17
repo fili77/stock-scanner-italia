@@ -18,19 +18,17 @@ export class CourseApi extends ApiClient {
 
     try {
       // Use the Apps Script URL to fetch real data
-      const response = await fetch(
-        `${this.appsScriptUrl}?action=getCourses`,
-        { 
-          mode: 'no-cors',
-          method: 'GET'
-        }
-      );
+      const url = `${this.appsScriptUrl}?action=getCourses`;
+      console.log("Fetching courses from:", url);
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`HTTP error: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log("Courses data received:", data);
       return data;
     } catch (error) {
       console.error("Error fetching courses:", error);
@@ -88,33 +86,29 @@ export class CourseApi extends ApiClient {
     try {
       console.log("Sending course data to Google Apps Script:", courseData);
       
-      // Create the URL with the action parameter
-      const url = `${this.appsScriptUrl}?action=addCourse`;
-      console.log("Request URL:", url);
-
-      // Create the form data for the request
-      const formData = new URLSearchParams();
-      formData.append('id', courseData.id);
-      formData.append('name', courseData.name);
-      formData.append('teacher', courseData.teacher);
+      // Create URL with query parameters instead of using formData
+      const url = new URL(this.appsScriptUrl as string);
+      url.searchParams.append('action', 'addCourse');
+      url.searchParams.append('id', courseData.id);
+      url.searchParams.append('name', courseData.name);
+      url.searchParams.append('teacher', courseData.teacher);
       
-      console.log("Form data:", formData.toString());
+      console.log("Request URL:", url.toString());
       
-      // Make a POST request to the Apps Script
-      const response = await fetch(url, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData
-      });
+      // Make a GET request to the Apps Script (more compatible with Apps Script)
+      const response = await fetch(url.toString());
       
       console.log("Response received:", response);
       
-      // Since we're using no-cors mode, we can't access the response status
-      // We'll assume success if the request didn't throw an error
-      return true;
+      if (!response.ok) {
+        console.error("Error response:", await response.text());
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log("Response data:", result);
+      
+      return result.success === true;
     } catch (error) {
       console.error("Error adding course:", error);
       return false;

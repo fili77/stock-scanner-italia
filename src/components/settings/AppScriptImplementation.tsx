@@ -28,11 +28,16 @@ export const AppScriptImplementation = () => {
     result = getCoursesList();
   } else if (action === "findStudent") {
     result = findStudentById(e.parameter.studentId);
+  } else if (action === "addCourse") {
+    // Handle add course in GET request
+    result = addCourse(e.parameter.id, e.parameter.name, e.parameter.teacher);
+  } else if (action === "markAttendance") {
+    // Handle mark attendance in GET request
+    result = markStudentAttendance(e.parameter.studentId, e.parameter.courseId, e.parameter.date);
   }
   
   return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*');
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
@@ -47,12 +52,16 @@ function doPost(e) {
     var data = JSON.parse(e.postData.contents);
     result = syncAttendanceRecords(data.records);
   } else if (action === "addCourse") {
-    result = addCourse(e.parameter.id, e.parameter.name, e.parameter.teacher);
+    if (e.postData && e.postData.contents) {
+      var data = JSON.parse(e.postData.contents);
+      result = addCourse(data.id, data.name, data.teacher);
+    } else {
+      result = addCourse(e.parameter.id, e.parameter.name, e.parameter.teacher);
+    }
   }
   
   return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Access-Control-Allow-Origin', '*');
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function getStudentsList(courseId) {
@@ -88,20 +97,30 @@ function getCoursesList() {
   // Skip header row
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    courses.push({
-      id: row[0],
-      name: row[1],
-      teacher: row[2],
-      totalStudents: row[3]
-    });
+    if (row[0] && row[0] !== "") {
+      courses.push({
+        id: row[0],
+        name: row[1],
+        teacher: row[2],
+        totalStudents: row[3] || 0
+      });
+    }
   }
   
+  Logger.log("Courses found: " + JSON.stringify(courses));
   return courses;
 }
 
 function addCourse(courseId, courseName, teacherName) {
   try {
+    Logger.log("Adding course: " + courseId + ", " + courseName + ", " + teacherName);
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Corsi");
+    
+    if (!sheet) {
+      // Create the Corsi sheet if it doesn't exist
+      sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Corsi");
+      sheet.appendRow(["ID Corso", "Nome Corso", "Docente", "Totale Studenti"]);
+    }
     
     // Add the new course to the sheet
     sheet.appendRow([
@@ -111,8 +130,10 @@ function addCourse(courseId, courseName, teacherName) {
       0  // Initial totalStudents value
     ]);
     
+    Logger.log("Course added successfully");
     return { success: true, message: "Course added successfully" };
   } catch(error) {
+    Logger.log("Error adding course: " + error.toString());
     return { success: false, message: "Error: " + error.toString() };
   }
 }
@@ -142,6 +163,12 @@ function findStudentById(studentId) {
 function markStudentAttendance(studentId, courseId, date) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presenze");
   
+  if (!sheet) {
+    // Create the Presenze sheet if it doesn't exist
+    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Presenze");
+    sheet.appendRow(["ID Studente", "ID Corso", "Data", "Presente"]);
+  }
+  
   // Add attendance record
   sheet.appendRow([
     studentId,
@@ -155,6 +182,12 @@ function markStudentAttendance(studentId, courseId, date) {
 
 function syncAttendanceRecords(records) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presenze");
+  
+  if (!sheet) {
+    // Create the Presenze sheet if it doesn't exist
+    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Presenze");
+    sheet.appendRow(["ID Studente", "ID Corso", "Data", "Presente"]);
+  }
   
   // Add all records
   for (var i = 0; i < records.length; i++) {
@@ -204,6 +237,20 @@ function syncAttendanceRecords(records) {
             <li>Clicca "Deploy" e autorizza le richieste</li>
             <li>Copia l'URL generato e incollalo sopra</li>
           </ol>
+        </div>
+        
+        <div className="rounded-md bg-yellow-50 p-4 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300">
+          <p className="text-sm font-medium">Importante:</p>
+          <p className="text-xs mt-1">
+            Assicurati di abilitare CORS nello script aggiungendo questo header alla risposta:
+          </p>
+          <code className="text-xs block mt-2 bg-yellow-100 dark:bg-yellow-900 p-2 rounded">
+            .setHeader('Access-Control-Allow-Origin', '*')
+          </code>
+          <p className="text-xs mt-2">
+            Se l'app non riesce a comunicare con il foglio, puoi verificare gli errori nella console
+            degli sviluppatori del browser (F12 &gt; Console).
+          </p>
         </div>
       </CardContent>
     </Card>
