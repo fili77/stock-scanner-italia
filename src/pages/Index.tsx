@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Scan, Settings, FileSpreadsheet, ImagePlus, UserPlus, BookPlus } from 'lucide-react';
+import { BookOpen, Scan, Settings, FileSpreadsheet, ImagePlus, UserPlus, BookPlus, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Header from '@/components/Header';
 import SignatureSheetSelector from '@/components/SignatureSheetSelector';
@@ -37,6 +37,13 @@ const Index = () => {
       description: 'Gestisci e visualizza i corsi',
       to: '/courses',
       color: 'bg-blue-600',
+    },
+    {
+      icon: <TrendingUp className="h-6 w-6" />,
+      title: 'Previsione Azioni',
+      description: 'Analizza e prevedi titoli azionari italiani',
+      to: '/stock-prediction',
+      color: 'bg-emerald-600',
     },
     {
       icon: <Settings className="h-6 w-6" />,
