@@ -13,8 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Loader2, TrendingUp, TrendingDown, Minus, AlertCircle } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Minus, AlertCircle, Activity } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Link } from 'react-router-dom';
 
 export default function StockPrediction() {
   const [selectedStock, setSelectedStock] = useState<string>('');
@@ -103,11 +104,19 @@ export default function StockPrediction() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Previsione Titoli Azionari Italiani</h1>
-        <p className="text-muted-foreground">
-          Analisi tecnica e previsione del prezzo per il giorno successivo
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-4xl font-bold mb-2">Previsione Titoli Azionari Italiani</h1>
+          <p className="text-muted-foreground">
+            Analisi tecnica e previsione del prezzo per il giorno successivo
+          </p>
+        </div>
+        <Link to="/backtesting">
+          <Button variant="outline" className="gap-2">
+            <Activity className="h-4 w-4" />
+            Testa Affidabilità
+          </Button>
+        </Link>
       </div>
 
       {/* Stock Selection */}
