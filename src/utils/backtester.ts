@@ -40,6 +40,34 @@ export interface BacktestResult {
   profitFactor: number; // Profitto totale / Perdita totale
 
   trades: BacktestTrade[];
+
+  // NUOVE ANALISI DETTAGLIATE
+  byStrategy: StrategyBreakdown[];
+  byYear: YearlyBreakdown[];
+  maxDrawdown: number; // %
+  maxConsecutiveWins: number;
+  maxConsecutiveLosses: number;
+  avgHoldingDays: number;
+}
+
+export interface StrategyBreakdown {
+  strategy: string;
+  totalTrades: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  avgReturn: number;
+  totalReturn: number;
+  profitFactor: number;
+}
+
+export interface YearlyBreakdown {
+  year: number;
+  totalTrades: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  totalReturn: number;
 }
 
 /**
@@ -246,6 +274,129 @@ export async function runBacktest(
   const totalLosses = Math.abs(trades.filter(t => t.outcome === 'loss').reduce((sum, t) => sum + t.actualReturn, 0));
   const profitFactor = totalLosses > 0 ? totalProfits / totalLosses : 0;
 
+  // NUOVE ANALISI DETTAGLIATE
+
+  // 1. Breakdown per strategia
+  const strategyMap = new Map<string, BacktestTrade[]>();
+  for (const trade of trades) {
+    const strategy = trade.type;
+    if (!strategyMap.has(strategy)) {
+      strategyMap.set(strategy, []);
+    }
+    strategyMap.get(strategy)!.push(trade);
+  }
+
+  const byStrategy: StrategyBreakdown[] = [];
+  for (const [strategy, strategyTrades] of strategyMap.entries()) {
+    const strategyWins = strategyTrades.filter(t => t.outcome === 'win').length;
+    const strategyLosses = strategyTrades.filter(t => t.outcome === 'loss').length;
+    const strategyWinRate = strategyTrades.length > 0 ? (strategyWins / strategyTrades.length) * 100 : 0;
+    const strategyAvgReturn = strategyTrades.length > 0
+      ? strategyTrades.reduce((sum, t) => sum + t.actualReturn, 0) / strategyTrades.length
+      : 0;
+    const strategyTotalReturn = strategyTrades.reduce((sum, t) => sum + (t.actualReturn / 100) * 0.05 * 100, 0);
+
+    const strategyProfits = strategyTrades.filter(t => t.outcome === 'win').reduce((sum, t) => sum + t.actualReturn, 0);
+    const strategyLossesAbs = Math.abs(strategyTrades.filter(t => t.outcome === 'loss').reduce((sum, t) => sum + t.actualReturn, 0));
+    const strategyProfitFactor = strategyLossesAbs > 0 ? strategyProfits / strategyLossesAbs : 0;
+
+    byStrategy.push({
+      strategy,
+      totalTrades: strategyTrades.length,
+      wins: strategyWins,
+      losses: strategyLosses,
+      winRate: strategyWinRate,
+      avgReturn: strategyAvgReturn,
+      totalReturn: strategyTotalReturn,
+      profitFactor: strategyProfitFactor,
+    });
+  }
+
+  // Ordina per totalReturn decrescente
+  byStrategy.sort((a, b) => b.totalReturn - a.totalReturn);
+
+  // 2. Breakdown per anno
+  const yearMap = new Map<number, BacktestTrade[]>();
+  for (const trade of trades) {
+    const year = new Date(trade.date).getFullYear();
+    if (!yearMap.has(year)) {
+      yearMap.set(year, []);
+    }
+    yearMap.get(year)!.push(trade);
+  }
+
+  const byYear: YearlyBreakdown[] = [];
+  for (const [year, yearTrades] of yearMap.entries()) {
+    const yearWins = yearTrades.filter(t => t.outcome === 'win').length;
+    const yearLosses = yearTrades.filter(t => t.outcome === 'loss').length;
+    const yearWinRate = yearTrades.length > 0 ? (yearWins / yearTrades.length) * 100 : 0;
+    const yearTotalReturn = yearTrades.reduce((sum, t) => sum + (t.actualReturn / 100) * 0.05 * 100, 0);
+
+    byYear.push({
+      year,
+      totalTrades: yearTrades.length,
+      wins: yearWins,
+      losses: yearLosses,
+      winRate: yearWinRate,
+      totalReturn: yearTotalReturn,
+    });
+  }
+
+  // Ordina per anno
+  byYear.sort((a, b) => a.year - b.year);
+
+  // 3. Calcola max drawdown
+  let equity = 0;
+  let peak = 0;
+  let maxDrawdown = 0;
+
+  for (const trade of trades) {
+    equity += (trade.actualReturn / 100) * 0.05 * 100; // 5% position size
+    if (equity > peak) {
+      peak = equity;
+    }
+    const drawdown = peak - equity;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  }
+
+  // 4. Calcola consecutive wins/losses
+  let currentStreak = 0;
+  let maxConsecutiveWins = 0;
+  let maxConsecutiveLosses = 0;
+  let lastOutcome: 'win' | 'loss' | null = null;
+
+  for (const trade of trades) {
+    if (trade.outcome === 'breakeven') continue;
+
+    if (trade.outcome === lastOutcome) {
+      currentStreak++;
+    } else {
+      if (lastOutcome === 'win' && currentStreak > maxConsecutiveWins) {
+        maxConsecutiveWins = currentStreak;
+      }
+      if (lastOutcome === 'loss' && currentStreak > maxConsecutiveLosses) {
+        maxConsecutiveLosses = currentStreak;
+      }
+      currentStreak = 1;
+      lastOutcome = trade.outcome;
+    }
+  }
+
+  // Check last streak
+  if (lastOutcome === 'win' && currentStreak > maxConsecutiveWins) {
+    maxConsecutiveWins = currentStreak;
+  }
+  if (lastOutcome === 'loss' && currentStreak > maxConsecutiveLosses) {
+    maxConsecutiveLosses = currentStreak;
+  }
+
+  // 5. Calcola average holding days
+  const avgHoldingDays = trades.length > 0
+    ? trades.reduce((sum, t) => sum + t.daysHeld, 0) / trades.length
+    : 0;
+
   return {
     startDate: startDate.toISOString().split('T')[0],
     endDate: endDate.toISOString().split('T')[0],
@@ -262,5 +413,11 @@ export async function runBacktest(
     avgLoss,
     profitFactor,
     trades,
+    byStrategy,
+    byYear,
+    maxDrawdown,
+    maxConsecutiveWins,
+    maxConsecutiveLosses,
+    avgHoldingDays,
   };
 }

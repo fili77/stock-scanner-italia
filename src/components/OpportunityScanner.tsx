@@ -518,6 +518,125 @@ export default function OpportunityScanner() {
             </div>
           </Card>
 
+          {/* Statistiche Aggiuntive */}
+          <Card className="p-6 border-2 border-yellow-500 bg-yellow-50">
+            <h3 className="text-xl font-bold mb-4 text-yellow-900">📈 Statistiche Avanzate</h3>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-lg border border-yellow-300">
+                <p className="text-xs text-muted-foreground mb-1">Max Drawdown</p>
+                <p className="text-2xl font-bold text-red-700">-{backtestResult.maxDrawdown.toFixed(2)}%</p>
+                <p className="text-xs text-muted-foreground mt-1">perdita massima</p>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg border border-yellow-300">
+                <p className="text-xs text-muted-foreground mb-1">Holding Medio</p>
+                <p className="text-2xl font-bold text-blue-700">{backtestResult.avgHoldingDays.toFixed(1)}</p>
+                <p className="text-xs text-muted-foreground mt-1">giorni per trade</p>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg border border-green-300">
+                <p className="text-xs text-muted-foreground mb-1">Max Streak Wins</p>
+                <p className="text-2xl font-bold text-green-700">{backtestResult.maxConsecutiveWins}</p>
+                <p className="text-xs text-muted-foreground mt-1">vittorie consecutive</p>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg border border-red-300">
+                <p className="text-xs text-muted-foreground mb-1">Max Streak Losses</p>
+                <p className="text-2xl font-bold text-red-700">{backtestResult.maxConsecutiveLosses}</p>
+                <p className="text-xs text-muted-foreground mt-1">perdite consecutive</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Performance per Strategia */}
+          {backtestResult.byStrategy && backtestResult.byStrategy.length > 0 && (
+            <Card className="p-6 border-2 border-green-500 bg-green-50">
+              <h3 className="text-xl font-bold mb-4 text-green-900">🎯 Performance per Strategia</h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm bg-white rounded">
+                  <thead>
+                    <tr className="border-b-2 border-green-300">
+                      <th className="text-left p-3">Strategia</th>
+                      <th className="text-center p-3">Trade</th>
+                      <th className="text-center p-3">Win Rate</th>
+                      <th className="text-right p-3">Avg Return</th>
+                      <th className="text-right p-3">Total Return</th>
+                      <th className="text-right p-3">Profit Factor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {backtestResult.byStrategy.map((strat, idx) => (
+                      <tr key={idx} className="border-b hover:bg-green-50">
+                        <td className="p-3 font-semibold capitalize">{strat.strategy.replace(/_/g, ' ')}</td>
+                        <td className="text-center p-3">{strat.totalTrades}</td>
+                        <td className="text-center p-3">
+                          <span className={`font-bold ${strat.winRate >= 50 ? 'text-green-700' : 'text-red-700'}`}>
+                            {strat.winRate.toFixed(1)}%
+                          </span>
+                          <br />
+                          <span className="text-xs text-muted-foreground">
+                            {strat.wins}W/{strat.losses}L
+                          </span>
+                        </td>
+                        <td className={`text-right p-3 font-bold ${strat.avgReturn >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          {strat.avgReturn >= 0 ? '+' : ''}{strat.avgReturn.toFixed(2)}%
+                        </td>
+                        <td className={`text-right p-3 font-bold ${strat.totalReturn >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          {strat.totalReturn >= 0 ? '+' : ''}{strat.totalReturn.toFixed(2)}%
+                        </td>
+                        <td className="text-right p-3 font-bold text-purple-700">
+                          {strat.profitFactor.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {/* Performance per Anno */}
+          {backtestResult.byYear && backtestResult.byYear.length > 0 && (
+            <Card className="p-6 border-2 border-blue-500 bg-blue-50">
+              <h3 className="text-xl font-bold mb-4 text-blue-900">📅 Performance per Anno</h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm bg-white rounded">
+                  <thead>
+                    <tr className="border-b-2 border-blue-300">
+                      <th className="text-left p-3">Anno</th>
+                      <th className="text-center p-3">Trade</th>
+                      <th className="text-center p-3">Win Rate</th>
+                      <th className="text-right p-3">Total Return</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {backtestResult.byYear.map((year, idx) => (
+                      <tr key={idx} className="border-b hover:bg-blue-50">
+                        <td className="p-3 font-bold">{year.year}</td>
+                        <td className="text-center p-3">{year.totalTrades}</td>
+                        <td className="text-center p-3">
+                          <span className={`font-bold ${year.winRate >= 50 ? 'text-green-700' : 'text-red-700'}`}>
+                            {year.winRate.toFixed(1)}%
+                          </span>
+                          <br />
+                          <span className="text-xs text-muted-foreground">
+                            {year.wins}W/{year.losses}L
+                          </span>
+                        </td>
+                        <td className={`text-right p-3 font-bold text-lg ${year.totalReturn >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          {year.totalReturn >= 0 ? '+' : ''}{year.totalReturn.toFixed(2)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
           {/* Trades List */}
           {backtestResult.trades.length > 0 && (
             <Card className="p-6 border-2 border-gray-300">
