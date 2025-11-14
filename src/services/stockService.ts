@@ -1,9 +1,30 @@
 import axios from 'axios';
 import { StockData, StockQuote, FundamentalData } from '@/types/stock';
 
+// CORS Proxy per aggirare le restrizioni CORS di Yahoo Finance
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
 const YAHOO_FINANCE_API = 'https://query1.finance.yahoo.com/v8/finance';
 const YAHOO_FINANCE_API_V7 = 'https://query1.finance.yahoo.com/v7/finance';
 const YAHOO_FINANCE_API_V10 = 'https://query1.finance.yahoo.com/v10/finance';
+
+/**
+ * Helper function to build URL with query parameters
+ */
+function buildUrlWithParams(baseUrl: string, params: Record<string, any>): string {
+  const url = new URL(baseUrl);
+  Object.entries(params).forEach(([key, value]) => {
+    url.searchParams.append(key, String(value));
+  });
+  return url.toString();
+}
+
+/**
+ * Helper function to make CORS-safe requests
+ */
+function withCorsProxy(url: string): string {
+  return CORS_PROXY + encodeURIComponent(url);
+}
 
 export class StockService {
   /**
@@ -18,7 +39,7 @@ export class StockService {
     interval: string = '1d'
   ): Promise<StockData[]> {
     try {
-      const url = `${YAHOO_FINANCE_API}/chart/${symbol}`;
+      const baseUrl = `${YAHOO_FINANCE_API}/chart/${symbol}`;
       const params = {
         period1: this.getPeriodTimestamp(period),
         period2: Math.floor(Date.now() / 1000),
@@ -26,7 +47,13 @@ export class StockService {
         events: 'history',
       };
 
-      const response = await axios.get(url, { params });
+      // Costruisci URL completo con parametri
+      const fullUrl = buildUrlWithParams(baseUrl, params);
+
+      // Usa proxy CORS per aggirare restrizioni
+      const proxiedUrl = withCorsProxy(fullUrl);
+
+      const response = await axios.get(proxiedUrl);
       const result = response.data.chart.result[0];
 
       if (!result || !result.timestamp) {
@@ -59,10 +86,14 @@ export class StockService {
    */
   static async getQuote(symbol: string): Promise<StockQuote> {
     try {
-      const url = `${YAHOO_FINANCE_API_V7}/quote`;
+      const baseUrl = `${YAHOO_FINANCE_API_V7}/quote`;
       const params = { symbols: symbol };
 
-      const response = await axios.get(url, { params });
+      // Costruisci URL completo con parametri e usa proxy CORS
+      const fullUrl = buildUrlWithParams(baseUrl, params);
+      const proxiedUrl = withCorsProxy(fullUrl);
+
+      const response = await axios.get(proxiedUrl);
       const quote = response.data.quoteResponse.result[0];
 
       if (!quote) {
@@ -89,10 +120,14 @@ export class StockService {
    */
   static async getMultipleQuotes(symbols: string[]): Promise<StockQuote[]> {
     try {
-      const url = `${YAHOO_FINANCE_API_V7}/quote`;
+      const baseUrl = `${YAHOO_FINANCE_API_V7}/quote`;
       const params = { symbols: symbols.join(',') };
 
-      const response = await axios.get(url, { params });
+      // Costruisci URL completo con parametri e usa proxy CORS
+      const fullUrl = buildUrlWithParams(baseUrl, params);
+      const proxiedUrl = withCorsProxy(fullUrl);
+
+      const response = await axios.get(proxiedUrl);
       const quotes = response.data.quoteResponse.result || [];
 
       return quotes.map((quote: any) => ({
@@ -132,12 +167,16 @@ export class StockService {
    */
   static async getFundamentals(symbol: string): Promise<FundamentalData> {
     try {
-      const url = `${YAHOO_FINANCE_API_V10}/quoteSummary/${symbol}`;
+      const baseUrl = `${YAHOO_FINANCE_API_V10}/quoteSummary/${symbol}`;
       const params = {
         modules: 'defaultKeyStatistics,financialData,summaryDetail,price,calendarEvents',
       };
 
-      const response = await axios.get(url, { params });
+      // Costruisci URL completo con parametri e usa proxy CORS
+      const fullUrl = buildUrlWithParams(baseUrl, params);
+      const proxiedUrl = withCorsProxy(fullUrl);
+
+      const response = await axios.get(proxiedUrl);
       const result = response.data.quoteSummary.result[0];
 
       if (!result) {
