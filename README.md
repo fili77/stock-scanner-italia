@@ -1,89 +1,111 @@
+# Stock Trading System - Mercato Italiano FTSE MIB
 
-# Welcome to your Lovable project
+Sistema di trading selettivo e quantitativo per il mercato azionario italiano, focalizzato su analisi statistica, regime detection e gestione del rischio.
 
-## Project info
+## 🎯 Filosofia
 
-**URL**: https://lovable.dev/projects/e1684f78-bfa5-4a30-8a87-d66d3cdd2af6
+**Trading Selettivo**: Opera solo quando c'è un edge statisticamente significativo. La maggior parte del tempo (70%) si rimane in cash.
 
-## Come scaricare il codice dell'applicazione
+**Risk Management Perfetto**: Kelly Criterion per position sizing, stop loss rigorosi, rapporto rischio/rendimento minimo 1.3:1.
 
-Ci sono diversi modi per scaricare il codice di questo progetto:
+## 🚀 Funzionalità
 
-1. **Scaricare come ZIP dalla piattaforma Lovable**:
-   - Fai clic sul nome del progetto nell'angolo in alto a sinistra
-   - Seleziona "Share" o "Condividi" dal menu a discesa
-   - Fai clic su "Download as ZIP" o "Scarica come ZIP"
+### 1. **Analisi Azioni**
+- Analisi tecnica avanzata con 20+ indicatori
+- Regime Detection Engine (7 regimi di mercato)
+- Analisi fondamentale automatizzata
+- Supporti, resistenze e pivot points
+- Correlazioni con mercati globali
+- Eventi finanziari (earnings, dividendi)
 
-2. **Utilizzare GitHub** (se hai connesso il progetto):
-   - Clicca sull'icona di GitHub nell'angolo in alto a destra
-   - Copia il repository sul tuo account GitHub
-   - Clona il repository in locale
+### 2. **Opportunity Scanner**
+- Scansione automatica di 30 titoli FTSE MIB
+- Algoritmi di edge detection:
+  - Volume anomaly (spike statisticamente significativi)
+  - Post-earnings drift (momentum post-annunci)
+  - Pre-dividend accumulation (pattern pre-dividendo)
+- Validazione statistica (z-score, p-value)
+- Kelly Criterion per position sizing
+- Filtri rigorosi: confidence >60%, R:R >1.3, expected return >0.8%
+- Scoring composito 0-100 per ranking
 
-3. **Dev Mode**:
-   - Attiva la modalità sviluppatore "Dev Mode" nell'angolo in alto a sinistra
-   - Potrai vedere tutto il codice sorgente e copiarlo manualmente
+### 3. **Backtesting**
+- Test su dati storici (fino a 5 anni)
+- Metriche complete: win rate, profit factor, max drawdown
+- Validazione out-of-sample
+- Analisi trade-by-trade
+- Performance rating
 
-## How can I edit this code?
+### 4. **Impostazioni**
+- Tema chiaro/scuro
+- Opzioni avanzate
+- Reset dati
 
-There are several ways of editing your application.
+## 📊 Titoli Supportati
 
-**Use Lovable**
+30 titoli FTSE MIB tra cui:
+- A2A, Amplifon, Azimut, Banco BPM
+- Enel, ENI, Ferrari, FinecoBank
+- Generali, Intesa Sanpaolo, Leonardo
+- Poste Italiane, Prysmian, STMicroelectronics
+- Telecom Italia, Tenaris, Terna, UniCredit
+- E molti altri...
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e1684f78-bfa5-4a30-8a87-d66d3cdd2af6) and start prompting.
+## 🛠️ Tecnologie
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **UI**: shadcn/ui + Tailwind CSS
+- **Charts**: Recharts
+- **API**: Yahoo Finance (free tier)
+- **State Management**: React Query
 
-**Use your preferred IDE**
+## 🏃 Avvio Rapido
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```bash
+# Clona il repository
+git clone https://github.com/fili77/stock-scanner-italia.git
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+# Entra nella cartella
+cd stock-scanner-italia
 
-Follow these steps:
+# Installa dipendenze
+npm install
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Avvia in modalità sviluppo
 npm run dev
+
+# Build per produzione
+npm run build
 ```
 
-**Edit a file directly in GitHub**
+## 📝 Utilizzo
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. **Homepage**: Scegli tra Analisi Azioni, Opportunity Scanner, Backtesting
+2. **Analisi Azioni**: Inserisci ticker (es. ISP.MI, UCG.MI, ENI.MI) e ottieni analisi completa
+3. **Opportunity Scanner**: Clicca "Avvia Scansione" per cercare opportunità nei 30 titoli FTSE MIB
+4. **Backtesting**: Seleziona titolo e periodo per validare strategie
 
-**Use GitHub Codespaces**
+## ⚠️ Disclaimer
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Questo software è fornito a scopo puramente educativo e di ricerca. Non costituisce consulenza finanziaria.
 
-## What technologies are used for this project?
+Trading di azioni comporta rischi significativi. Non investire denaro che non puoi permetterti di perdere.
 
-This project is built with .
+Le performance passate non sono indicative di risultati futuri.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 📄 Licenza
 
-## How can I deploy this project?
+MIT License - Vedi LICENSE per dettagli
 
-Simply open [Lovable](https://lovable.dev/projects/e1684f78-bfa5-4a30-8a87-d66d3cdd2af6) and click on Share -> Publish.
+## 🤝 Contributi
 
-## I want to use a custom domain - is that possible?
+Contributi, issues e feature requests sono benvenuti!
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+## 📧 Contatti
 
+Per domande o supporto, apri una issue su GitHub.
+
+---
+
+**Sviluppato con ❤️ per trader quantitativi italiani**

@@ -1,56 +1,33 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Scan, Settings, FileSpreadsheet, ImagePlus, UserPlus, BookPlus, TrendingUp, Search } from 'lucide-react';
+import { Settings, TrendingUp, Search, Activity } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Header from '@/components/Header';
-import SignatureSheetSelector from '@/components/SignatureSheetSelector';
-import AddCourseDialog from '@/components/AddCourseDialog';
 
 const Index = () => {
   const menuItems = [
     {
-      icon: <Scan className="h-6 w-6" />,
-      title: 'Scansiona Presenza',
-      description: 'Registra presenze con scansione di codici individuali',
-      to: '/scan',
-      color: 'bg-primary',
-    },
-    {
-      icon: <ImagePlus className="h-6 w-6" />,
-      title: 'Scansione Multipla',
-      description: 'Carica una foto del foglio presenze',
-      to: '/batch-scan',
-      color: 'bg-green-600',
-    },
-    {
-      icon: <UserPlus className="h-6 w-6" />,
-      title: 'Presenza Manuale',
-      description: 'Inserisci manualmente presenze e genera fogli firma',
-      to: '/manual-attendance',
-      color: 'bg-purple-600',
-    },
-    {
-      icon: <BookOpen className="h-6 w-6" />,
-      title: 'Corsi',
-      description: 'Gestisci e visualizza i corsi',
-      to: '/courses',
-      color: 'bg-blue-600',
-    },
-    {
       icon: <TrendingUp className="h-6 w-6" />,
-      title: 'Previsione Azioni',
-      description: 'Analizza e prevedi titoli azionari italiani',
+      title: 'Analisi Azioni',
+      description: 'Analizza e prevedi titoli azionari italiani con indicatori tecnici avanzati',
       to: '/stock-prediction',
       color: 'bg-emerald-600',
     },
     {
       icon: <Search className="h-6 w-6" />,
       title: 'Opportunity Scanner',
-      description: 'Scansiona 30 titoli per opportunità con edge statistico',
+      description: 'Scansiona 30 titoli FTSE MIB per opportunità con edge statistico',
       to: '/opportunity-scanner',
       color: 'bg-yellow-600',
+    },
+    {
+      icon: <Activity className="h-6 w-6" />,
+      title: 'Backtesting',
+      description: 'Testa strategie su dati storici per validazione statistica',
+      to: '/backtesting',
+      color: 'bg-blue-600',
     },
     {
       icon: <Settings className="h-6 w-6" />,
@@ -76,80 +53,40 @@ const Index = () => {
     show: { opacity: 1, y: 0 },
   };
 
-  const [showSignatureSheet, setShowSignatureSheet] = useState(false);
-  const [addCourseDialogOpen, setAddCourseDialogOpen] = useState(false);
-
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      
+
       <main className="flex-1 container max-w-4xl px-4 py-8">
-        <motion.h1 
-          className="text-3xl font-extrabold text-center mb-8"
+        <motion.h1
+          className="text-3xl font-extrabold text-center mb-4"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          Gestione Presenze
+          Stock Trading System
         </motion.h1>
-        
-        {!showSignatureSheet ? (
-          <>
-            <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="hover:bg-accent transition-colors duration-300 cursor-pointer" onClick={() => setShowSignatureSheet(true)}>
-                <CardContent className="p-6 flex items-center space-x-4">
-                  <div className="p-3 rounded-full bg-amber-600 text-white">
-                    <FileSpreadsheet className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold">Stampa Foglio Firme</h2>
-                    <p className="text-sm text-muted-foreground">Genera e stampa un foglio firme per un corso</p>
-                  </div>
-                </CardContent>
-              </Card>
 
-              <Card className="hover:bg-accent transition-colors duration-300 cursor-pointer" onClick={() => setAddCourseDialogOpen(true)}>
-                <CardContent className="p-6 flex items-center space-x-4">
-                  <div className="p-3 rounded-full bg-teal-600 text-white">
-                    <BookPlus className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold">Aggiungi Corso</h2>
-                    <p className="text-sm text-muted-foreground">Aggiungi un nuovo corso al registro</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+        <motion.p
+          className="text-center text-muted-foreground mb-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          Sistema di trading selettivo per il mercato italiano FTSE MIB
+        </motion.p>
 
-            <motion.div 
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
-              variants={container}
-              initial="hidden"
-              animate="show"
-            >
-              {menuItems.map((item, index) => (
-                <MenuItem key={index} {...item} variants={item} />
-              ))}
-            </motion.div>
-          </>
-        ) : (
-          <div>
-            <button 
-              className="mb-6 text-sm flex items-center hover:underline"
-              onClick={() => setShowSignatureSheet(false)}
-            >
-              ← Torna al menu principale
-            </button>
-            <h2 className="text-2xl font-bold mb-6">Foglio Firme</h2>
-            <SignatureSheetSelector />
-          </div>
-        )}
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          variants={container}
+          initial="hidden"
+          animate="show"
+        >
+          {menuItems.map((menuItem, index) => (
+            <MenuItem key={index} {...menuItem} variants={item} />
+          ))}
+        </motion.div>
       </main>
-
-      <AddCourseDialog 
-        open={addCourseDialogOpen} 
-        onOpenChange={setAddCourseDialogOpen} 
-      />
     </div>
   );
 };
