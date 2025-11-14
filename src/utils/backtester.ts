@@ -179,7 +179,8 @@ function simulateTrade(
 export async function runBacktest(
   historicalData: Map<string, StockData[]>,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  sp500Historical?: StockData[] // NUOVO: dati S&P500 storici opzionali
 ): Promise<BacktestResult> {
   const trades: BacktestTrade[] = [];
   let totalOpportunitiesFound = 0;
@@ -226,8 +227,17 @@ export async function runBacktest(
 
     if (stockDataMap.size === 0) continue;
 
-    // Esegui scanner
-    const scanResult = await scanForOpportunities(stockDataMap, fundamentalsMap, regimeMap);
+    // Filtra dati S&P500 fino a scanDate (se disponibili)
+    let sp500DataUntilScan: StockData[] | undefined;
+    if (sp500Historical && sp500Historical.length > 0) {
+      sp500DataUntilScan = sp500Historical.filter(d => {
+        const dataDate = new Date(d.date);
+        return dataDate <= scanDate;
+      }).slice(-90); // Ultimi 90 giorni come per gli altri titoli
+    }
+
+    // Esegui scanner (con S&P500 se disponibile)
+    const scanResult = await scanForOpportunities(stockDataMap, fundamentalsMap, regimeMap, sp500DataUntilScan);
 
     if (scanResult.opportunities.length > 0) {
       console.log(`📅 ${scanDate.toISOString().split('T')[0]}: ${scanResult.opportunities.length} opportunità trovate`);

@@ -349,6 +349,110 @@ function getDaysDifference(date1: Date, date2: Date): number {
 }
 
 /**
+ * Rileva correlazione con mercato USA (S&P500)
+ * COMPATIBILE CON EOD: S&P500 chiude +X% oggi → titolo italiano sale domani
+ */
+export function detectUSMarketCorrelation(
+  stockData: StockData[],
+  sp500Data: StockData[], // Dati S&P500
+  currentPrice: number,
+  symbol: string
+): TradingOpportunity | null {
+  if (stockData.length < 20 || sp500Data.length < 20) return null;
+
+  // Prendi ultimi 20 giorni
+  const recent20Stock = stockData.slice(-20);
+  const recent20SP500 = sp500Data.slice(-20);
+
+  // Calcola variazione % giornaliera S&P500 OGGI
+  const sp500Today = recent20SP500[recent20SP500.length - 1];
+  const sp500Yesterday = recent20SP500[recent20SP500.length - 2];
+  const sp500ChangeToday = ((sp500Today.close - sp500Yesterday.close) / sp500Yesterday.close) * 100;
+
+  // Se S&P500 non ha mosso significativamente, skip
+  if (Math.abs(sp500ChangeToday) < 0.5) return null;
+
+  // Calcola correlazione storica: quando S&P500 sale/scende, questo titolo cosa fa il GIORNO DOPO?
+  let correlatedMoves = 0;
+  let totalMoves = 0;
+
+  for (let i = 1; i < recent20SP500.length - 1; i++) {
+    // Variazione S&P500 al giorno i
+    const sp500Change = ((recent20SP500[i].close - recent20SP500[i - 1].close) / recent20SP500[i - 1].close) * 100;
+
+    // Variazione titolo italiano al giorno i+1 (GIORNO DOPO)
+    const stockChangeNextDay = ((recent20Stock[i + 1].close - recent20Stock[i].close) / recent20Stock[i].close) * 100;
+
+    // Se S&P500 sale e titolo sale il giorno dopo → correlazione positiva
+    // Se S&P500 scende e titolo scende il giorno dopo → correlazione positiva
+    if (Math.abs(sp500Change) > 0.5) {
+      totalMoves++;
+      if ((sp500Change > 0 && stockChangeNextDay > 0) || (sp500Change < 0 && stockChangeNextDay < 0)) {
+        correlatedMoves++;
+      }
+    }
+  }
+
+  if (totalMoves < 5) return null; // Serve almeno 5 movimenti per statistica affidabile
+
+  const correlationRate = (correlatedMoves / totalMoves) * 100;
+
+  // Serve correlazione > 60% per considerarla significativa
+  if (correlationRate < 60) return null;
+
+  const atr = calculateATR(recent20Stock.slice(-15));
+  const details: string[] = [];
+  let expectedReturn = 0;
+  let edgeStrength: EdgeStrength = 'medium';
+
+  const sp500Direction = sp500ChangeToday > 0 ? 'rialzo' : 'ribasso';
+
+  if (correlationRate >= 70) {
+    edgeStrength = 'strong';
+    expectedReturn = Math.min(Math.abs(sp500ChangeToday) * 0.7, 2.0); // 70% del movimento S&P500, max 2%
+    details.push(`🇺🇸 S&P500 chiuso ${sp500Direction} ${Math.abs(sp500ChangeToday).toFixed(1)}% OGGI`);
+    details.push(`📊 Correlazione FORTE: ${correlationRate.toFixed(0)}% (${correlatedMoves}/${totalMoves} movimenti)`);
+    details.push(`✅ Statisticamente questo titolo segue S&P500 il giorno DOPO`);
+  } else {
+    edgeStrength = 'medium';
+    expectedReturn = Math.min(Math.abs(sp500ChangeToday) * 0.5, 1.5); // 50% del movimento S&P500, max 1.5%
+    details.push(`🇺🇸 S&P500 ${sp500Direction} ${Math.abs(sp500ChangeToday).toFixed(1)}% oggi`);
+    details.push(`📊 Correlazione media: ${correlationRate.toFixed(0)}% negli ultimi 20 giorni`);
+    details.push(`🎯 Possibile movimento domani in stessa direzione`);
+  }
+
+  // Se S&P500 scende, opportunità di SHORT o skip (per ora skip)
+  if (sp500ChangeToday < 0) {
+    // TODO: implementare strategie short se necessario
+    return null;
+  }
+
+  return {
+    symbol,
+    stockName: symbol,
+    type: 'support_bounce', // Riutilizzo questo type
+    edgeStrength,
+    zScore: correlationRate / 100 * 3, // Correlazione alta = z-score alto
+    pValue: 1 - (correlationRate / 100),
+    confidence: correlationRate,
+    expectedReturn,
+    expectedHoldingPeriod: 2, // Entry domani, exit 1-2 giorni
+    riskRewardRatio: 1.8,
+    currentPrice,
+    entryPrice: currentPrice,
+    stopLoss: currentPrice - (atr * 2.0),
+    takeProfit: currentPrice + (atr * 2.0),
+    details,
+    regime: 'trending_up',
+    positionSize: calculateKellySize(expectedReturn / 100, correlationRate / 100, 0.015),
+    maxLoss: 0,
+    passesFilters: true,
+    filterReasons: [],
+    totalScore: 0,
+  };
+}
+
+/**
  * Rileva momentum semplice (2-3 giorni stessa direzione)
  * COMPATIBILE CON EOD: scan sera → entry mattina dopo
  */
@@ -767,7 +871,8 @@ export function detectMeanReversion(
 export async function scanForOpportunities(
   stockDataMap: Map<string, StockData[]>,
   fundamentalsMap: Map<string, FundamentalData>,
-  regimeMap: Map<string, MarketRegime>
+  regimeMap: Map<string, MarketRegime>,
+  sp500Data?: StockData[] // NUOVO: dati S&P500 opzionali
 ): Promise<ScannerResult> {
   const opportunities: TradingOpportunity[] = [];
   const scannedSymbols = stockDataMap.size;
@@ -783,35 +888,44 @@ export async function scanForOpportunities(
     const fundamentals = fundamentalsMap.get(symbol) || null;
     const regime = regimeMap.get(symbol) || 'range_bound';
 
-    // 1. Check Momentum Simple (2-3 giorni) - COMPATIBILE EOD
+    // 1. Check US Market Correlation (S&P500) - NUOVA STRATEGIA!
+    if (sp500Data && sp500Data.length >= 20) {
+      const usCorrelationOpp = detectUSMarketCorrelation(stockData, sp500Data, currentPrice, symbol);
+      if (usCorrelationOpp) {
+        usCorrelationOpp.regime = regime;
+        opportunities.push(usCorrelationOpp);
+      }
+    }
+
+    // 2. Check Momentum Simple (2-3 giorni) - COMPATIBILE EOD
     const momentumOpp = detectMomentumSimple(stockData, currentPrice, symbol);
     if (momentumOpp) {
       momentumOpp.regime = regime;
       opportunities.push(momentumOpp);
     }
 
-    // 2. Check Mean Reversion - COMPATIBILE EOD
+    // 3. Check Mean Reversion - COMPATIBILE EOD
     const reversionOpp = detectMeanReversion(stockData, currentPrice, symbol);
     if (reversionOpp) {
       reversionOpp.regime = regime;
       opportunities.push(reversionOpp);
     }
 
-    // 3. Check Support Bounce - COMPATIBILE EOD
+    // 4. Check Support Bounce - COMPATIBILE EOD
     const supportOpp = detectSupportBounce(stockData, currentPrice, symbol);
     if (supportOpp) {
       supportOpp.regime = regime;
       opportunities.push(supportOpp);
     }
 
-    // 4. Check Resistance Break - PARZIALMENTE COMPATIBILE EOD
+    // 5. Check Resistance Break - PARZIALMENTE COMPATIBILE EOD
     const resistanceOpp = detectResistanceBreak(stockData, currentPrice, symbol);
     if (resistanceOpp) {
       resistanceOpp.regime = regime;
       opportunities.push(resistanceOpp);
     }
 
-    // 5. Check Volume Anomaly - PARZIALMENTE COMPATIBILE EOD
+    // 6. Check Volume Anomaly - PARZIALMENTE COMPATIBILE EOD
     const volumeOpp = detectVolumeAnomaly(stockData, currentPrice, symbol);
     if (volumeOpp) {
       volumeOpp.regime = regime;

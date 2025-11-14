@@ -67,6 +67,17 @@ export default function OpportunityScanner() {
         throw new Error('Nessun dato storico disponibile');
       }
 
+      // Scarica S&P500 storico (5 anni)
+      console.log('🇺🇸 Scarico dati storici S&P500 (5 anni)...');
+      let sp500Historical: StockData[] | undefined;
+      try {
+        sp500Historical = await StockService.getHistoricalData('^GSPC', '5y', '1d');
+        console.log(`✅ S&P500 storico: ${sp500Historical.length} giorni`);
+      } catch (err) {
+        console.warn('⚠️ Non riesco a scaricare S&P500 storico, skip strategia correlazione USA');
+        sp500Historical = undefined;
+      }
+
       // Calcola date start e end (5 anni fa -> oggi)
       const endDate = new Date();
       const startDate = new Date();
@@ -74,8 +85,8 @@ export default function OpportunityScanner() {
 
       console.log(`🔍 Eseguo backtest da ${startDate.toISOString().split('T')[0]} a ${endDate.toISOString().split('T')[0]}...`);
 
-      // Esegui backtest
-      const result = await runBacktest(historicalData, startDate, endDate);
+      // Esegui backtest (con S&P500 se disponibile)
+      const result = await runBacktest(historicalData, startDate, endDate, sp500Historical);
 
       console.log(`✅ Backtest completato:`, result);
 
@@ -150,13 +161,25 @@ export default function OpportunityScanner() {
       }
 
       console.log(`📊 Download completato: ${stockDataMap.size} titoli con dati validi`);
+
+      // Scarica S&P500 per correlazione USA
+      console.log('🇺🇸 Scarico dati S&P500...');
+      let sp500Data: StockData[] | undefined;
+      try {
+        sp500Data = await StockService.getHistoricalData('^GSPC', '1mo', '1d');
+        console.log(`✅ S&P500 scaricato: ${sp500Data.length} giorni`);
+      } catch (err) {
+        console.warn('⚠️ Non riesco a scaricare S&P500, skip strategia correlazione USA');
+        sp500Data = undefined;
+      }
+
       console.log('🔍 Inizio analisi per cercare opportunità...');
 
       // Salva i dati raw per visualizzazione
       setRawDataMap(stockDataMap);
 
-      // Run scanner
-      const result = await scanForOpportunities(stockDataMap, fundamentalsMap, regimeMap);
+      // Run scanner (con S&P500 se disponibile)
+      const result = await scanForOpportunities(stockDataMap, fundamentalsMap, regimeMap, sp500Data);
 
       // Add stock names
       result.opportunities.forEach(opp => {
