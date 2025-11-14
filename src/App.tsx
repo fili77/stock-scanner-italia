@@ -24,14 +24,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/scan" element={<ScanPage />} />
-          <Route path="/batch-scan" element={<BatchScanPage />} />
-          <Route path="/courses" element={<CoursesPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/manual-attendance" element={<ManualAttendancePage />} />
-          <Route path="/stock-prediction" element={<StockPredictionPage />} />
-          <Route path="/backtesting" element={<BacktestingPage />} />
+          <Route path="/" element={<OpportunityScannerPage />} />
           <Route path="/opportunity-scanner" element={<OpportunityScannerPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
