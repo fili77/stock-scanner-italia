@@ -55,8 +55,63 @@ export interface StockPrediction {
     technical: string[];
     volume: string[];
     momentum: string[];
+    fundamental?: string[];
   };
   indicators: TechnicalIndicators;
+  fundamentals?: FundamentalAnalysis;
+  recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
+  combinedScore?: number; // Score che combina tecnica + fondamentale
+}
+
+export interface FundamentalData {
+  // Valuation Metrics
+  peRatio: number | null;
+  pegRatio: number | null;
+  priceToBook: number | null;
+  priceToSales: number | null;
+  evToEbitda: number | null;
+
+  // Profitability
+  profitMargin: number | null;
+  operatingMargin: number | null;
+  returnOnEquity: number | null;
+  returnOnAssets: number | null;
+
+  // Growth
+  revenueGrowth: number | null;
+  earningsGrowth: number | null;
+
+  // Financial Health
+  debtToEquity: number | null;
+  currentRatio: number | null;
+  quickRatio: number | null;
+
+  // Dividend
+  dividendYield: number | null;
+  payoutRatio: number | null;
+
+  // Per Share
+  eps: number | null;
+  bookValuePerShare: number | null;
+
+  // Other
+  marketCap: number | null;
+  beta: number | null;
+  sharesOutstanding: number | null;
+}
+
+export interface FundamentalAnalysis {
+  data: FundamentalData;
+  scores: {
+    valuation: number; // 0-100
+    profitability: number;
+    growth: number;
+    financialHealth: number;
+    dividend: number;
+    overall: number;
+  };
+  rating: 'undervalued' | 'fairly_valued' | 'overvalued';
+  signals: string[];
   recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
 }
 

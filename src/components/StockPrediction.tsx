@@ -3,6 +3,7 @@ import { StockData, StockPrediction as StockPredictionType } from '@/types/stock
 import { ITALIAN_STOCKS } from '@/config/italianStocks';
 import { StockService } from '@/services/stockService';
 import { predictStock } from '@/utils/stockPrediction';
+import { analyzeFundamentals, combineRecommendations } from '@/utils/fundamentalAnalysis';
 import StockChart from './StockChart';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -44,8 +45,33 @@ export default function StockPrediction() {
 
       setStockData(data);
 
-      // Generate prediction
+      // Generate technical prediction
       const pred = predictStock(selectedStock, data);
+
+      // Fetch and analyze fundamental data
+      try {
+        const fundamentalData = await StockService.getFundamentals(selectedStock);
+        const stockInfo = ITALIAN_STOCKS.find(s => s.symbol === selectedStock);
+        const sector = stockInfo?.sector || 'default';
+
+        const fundamentalAnalysis = analyzeFundamentals(fundamentalData, sector);
+
+        // Combine technical and fundamental recommendations
+        const combined = combineRecommendations(
+          pred.recommendation,
+          fundamentalAnalysis.recommendation
+        );
+
+        // Add fundamentals to prediction
+        pred.fundamentals = fundamentalAnalysis;
+        pred.signals.fundamental = fundamentalAnalysis.signals;
+        pred.combinedScore = combined.score;
+        pred.recommendation = combined.recommendation;
+      } catch (fundError) {
+        console.warn('Could not fetch fundamentals:', fundError);
+        // Continue without fundamentals
+      }
+
       setPrediction(pred);
     } catch (err) {
       console.error('Error analyzing stock:', err);
@@ -229,7 +255,7 @@ export default function StockPrediction() {
           {/* Signals */}
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Segnali di Trading</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {/* Technical Signals */}
               <div>
                 <h4 className="font-medium text-sm text-muted-foreground mb-2">Analisi Tecnica</h4>
@@ -268,8 +294,152 @@ export default function StockPrediction() {
                   ))}
                 </ul>
               </div>
+
+              {/* Fundamental Signals */}
+              {prediction.signals.fundamental && prediction.signals.fundamental.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-2">Analisi Fondamentale</h4>
+                  <ul className="space-y-1">
+                    {prediction.signals.fundamental.map((signal, idx) => (
+                      <li key={idx} className="text-sm flex items-start gap-2">
+                        <span className="text-orange-500 mt-1">•</span>
+                        <span>{signal}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </Card>
+
+          {/* Fundamental Analysis Details */}
+          {prediction.fundamentals && (
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Analisi Fondamentale Dettagliata</h3>
+
+              {/* Scores */}
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Valutazione</p>
+                  <p className="text-2xl font-bold">{prediction.fundamentals.scores.valuation.toFixed(0)}</p>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-blue-500 h-1.5 rounded-full"
+                      style={{ width: `${prediction.fundamentals.scores.valuation}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Redditività</p>
+                  <p className="text-2xl font-bold">{prediction.fundamentals.scores.profitability.toFixed(0)}</p>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-green-500 h-1.5 rounded-full"
+                      style={{ width: `${prediction.fundamentals.scores.profitability}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Crescita</p>
+                  <p className="text-2xl font-bold">{prediction.fundamentals.scores.growth.toFixed(0)}</p>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-purple-500 h-1.5 rounded-full"
+                      style={{ width: `${prediction.fundamentals.scores.growth}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Solidità</p>
+                  <p className="text-2xl font-bold">{prediction.fundamentals.scores.financialHealth.toFixed(0)}</p>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-orange-500 h-1.5 rounded-full"
+                      style={{ width: `${prediction.fundamentals.scores.financialHealth}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Dividendo</p>
+                  <p className="text-2xl font-bold">{prediction.fundamentals.scores.dividend.toFixed(0)}</p>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-yellow-500 h-1.5 rounded-full"
+                      style={{ width: `${prediction.fundamentals.scores.dividend}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Complessivo</p>
+                  <p className="text-2xl font-bold text-blue-600">{prediction.fundamentals.scores.overall.toFixed(0)}</p>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-blue-600 h-1.5 rounded-full"
+                      style={{ width: `${prediction.fundamentals.scores.overall}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                {prediction.fundamentals.data.peRatio && (
+                  <div>
+                    <p className="text-muted-foreground">P/E Ratio</p>
+                    <p className="font-semibold">{prediction.fundamentals.data.peRatio.toFixed(2)}</p>
+                  </div>
+                )}
+                {prediction.fundamentals.data.profitMargin && (
+                  <div>
+                    <p className="text-muted-foreground">Profit Margin</p>
+                    <p className="font-semibold">{(prediction.fundamentals.data.profitMargin * 100).toFixed(1)}%</p>
+                  </div>
+                )}
+                {prediction.fundamentals.data.returnOnEquity && (
+                  <div>
+                    <p className="text-muted-foreground">ROE</p>
+                    <p className="font-semibold">{(prediction.fundamentals.data.returnOnEquity * 100).toFixed(1)}%</p>
+                  </div>
+                )}
+                {prediction.fundamentals.data.debtToEquity && (
+                  <div>
+                    <p className="text-muted-foreground">Debt/Equity</p>
+                    <p className="font-semibold">{prediction.fundamentals.data.debtToEquity.toFixed(2)}</p>
+                  </div>
+                )}
+                {prediction.fundamentals.data.revenueGrowth && (
+                  <div>
+                    <p className="text-muted-foreground">Revenue Growth</p>
+                    <p className="font-semibold">{(prediction.fundamentals.data.revenueGrowth * 100).toFixed(1)}%</p>
+                  </div>
+                )}
+                {prediction.fundamentals.data.dividendYield && (
+                  <div>
+                    <p className="text-muted-foreground">Dividend Yield</p>
+                    <p className="font-semibold">{(prediction.fundamentals.data.dividendYield * 100).toFixed(2)}%</p>
+                  </div>
+                )}
+                {prediction.fundamentals.data.beta && (
+                  <div>
+                    <p className="text-muted-foreground">Beta</p>
+                    <p className="font-semibold">{prediction.fundamentals.data.beta.toFixed(2)}</p>
+                  </div>
+                )}
+                {prediction.fundamentals.data.marketCap && (
+                  <div>
+                    <p className="text-muted-foreground">Market Cap</p>
+                    <p className="font-semibold">€{(prediction.fundamentals.data.marketCap / 1000000000).toFixed(2)}B</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm font-medium">
+                  Valutazione: <span className="capitalize">{prediction.fundamentals.rating.replace('_', ' ')}</span>
+                </p>
+              </div>
+            </Card>
+          )}
 
           {/* Charts */}
           <StockChart
