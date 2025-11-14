@@ -122,8 +122,8 @@ export function detectVolumeAnomaly(
 
   // Entry/exit levels
   const atr = calculateATR(stockData.slice(-15));
-  const stopLoss = currentPrice - (atr * 1.5); // 1.5 ATR stop
-  const takeProfit = currentPrice + (atr * 2.5); // 2.5 ATR target (1.67 R:R)
+  const stopLoss = currentPrice - (atr * 2.0); // 2.0 ATR stop (allargato)
+  const takeProfit = currentPrice + (atr * 2.5); // 2.5 ATR target
 
   return {
     symbol,
@@ -403,7 +403,7 @@ export function detectGapFill(
       riskRewardRatio: 2.0,
       currentPrice,
       entryPrice: currentPrice,
-      stopLoss: currentPrice + (atr * 1.0), // Stop sopra (shortare il gap)
+      stopLoss: currentPrice + (atr * 2.0), // Stop allargato a 2.0 ATR
       takeProfit: gapTarget,
       details,
       regime: 'range_bound',
@@ -443,7 +443,7 @@ export function detectGapFill(
       riskRewardRatio: 2.0,
       currentPrice,
       entryPrice: currentPrice,
-      stopLoss: currentPrice - (atr * 1.0),
+      stopLoss: currentPrice - (atr * 2.0), // Stop allargato a 2.0 ATR
       takeProfit: gapTarget,
       details,
       regime: 'range_bound',
@@ -531,7 +531,7 @@ export function detectMomentumSimple(
       riskRewardRatio: 1.8,
       currentPrice,
       entryPrice: currentPrice,
-      stopLoss: currentPrice - (atr * 1.2),
+      stopLoss: currentPrice - (atr * 2.0), // Stop allargato a 2.0 ATR
       takeProfit: currentPrice + (atr * 2.0),
       details,
       regime: 'trending_up',
@@ -573,7 +573,7 @@ export function detectMomentumSimple(
       riskRewardRatio: 1.5,
       currentPrice,
       entryPrice: currentPrice,
-      stopLoss: currentPrice - (atr * 1.5),
+      stopLoss: currentPrice - (atr * 2.0), // Stop allargato a 2.0 ATR
       takeProfit: currentPrice + (atr * 2.0),
       details,
       regime: 'range_bound',
@@ -655,7 +655,7 @@ export function detectSupportBounce(
     details.push(`🎯 Prezzo vicino al supporto (+${distanceFromSupport.toFixed(1)}%)`);
   }
 
-  const stopLoss = nearestSupport - (atr * 0.5); // Stop appena sotto il supporto
+  const stopLoss = nearestSupport - (atr * 1.5); // Stop allargato a 1.5 ATR sotto supporto
   const takeProfit = currentPrice + (atr * 2.5);
 
   return {
@@ -750,7 +750,7 @@ export function detectResistanceBreak(
     details.push(`📊 Volume ${volumeRatio.toFixed(1)}x media (conferma breakout)`);
   }
 
-  const stopLoss = nearestResistance - (atr * 0.5); // Stop sotto la ex-resistenza (ora supporto)
+  const stopLoss = nearestResistance - (atr * 1.5); // Stop allargato a 1.5 ATR sotto ex-resistenza
   const takeProfit = currentPrice + (atr * 3.0);
 
   return {
@@ -837,7 +837,7 @@ export function detectMeanReversion(
     details.push(`🎯 Mean reversion attesa verso MA20 €${ma20.toFixed(3)}`);
   }
 
-  const stopLoss = currentPrice - (atr * 1.5);
+  const stopLoss = currentPrice - (atr * 2.0); // Stop allargato a 2.0 ATR
   const takeProfit = ma20; // Target: ritorno alla media
 
   // Skip se take profit è troppo vicino

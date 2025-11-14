@@ -44,6 +44,7 @@ export interface BacktestResult {
 
 /**
  * Simula l'esito di un trade dato i dati storici successivi
+ * Implementa trailing stop per proteggere i profitti
  */
 function simulateTrade(
   opportunity: TradingOpportunity,
@@ -53,25 +54,44 @@ function simulateTrade(
   if (futureData.length === 0) return null;
 
   const entryPrice = opportunity.entryPrice;
-  const stopLoss = opportunity.stopLoss;
+  let stopLoss = opportunity.stopLoss;
   const takeProfit = opportunity.takeProfit;
+
+  // Calcola ATR per trailing stop (approssimazione: 2% del prezzo di entrata)
+  const atrEstimate = entryPrice * 0.02;
+  const trailingDistance = atrEstimate * 1.5; // Trailing stop a 1.5 ATR dal massimo
 
   let exitPrice = entryPrice;
   let daysHeld = 0;
   let hitStopLoss = false;
   let hitTakeProfit = false;
   let outcome: 'win' | 'loss' | 'breakeven' = 'breakeven';
+  let highestPrice = entryPrice; // Traccia il massimo raggiunto
 
   // Simula i giorni successivi
   for (let i = 0; i < Math.min(futureData.length, maxDays); i++) {
     const day = futureData[i];
     daysHeld++;
 
-    // Check se hit stop loss
+    // Aggiorna il massimo raggiunto
+    if (day.high > highestPrice) {
+      highestPrice = day.high;
+
+      // Aggiorna trailing stop se siamo in profitto (prezzo > entryPrice)
+      if (highestPrice > entryPrice) {
+        const newTrailingStop = highestPrice - trailingDistance;
+        // Alza lo stop solo se il nuovo trailing è più alto dello stop attuale
+        if (newTrailingStop > stopLoss) {
+          stopLoss = newTrailingStop;
+        }
+      }
+    }
+
+    // Check se hit stop loss (incluso trailing stop)
     if (day.low <= stopLoss) {
       exitPrice = stopLoss;
       hitStopLoss = true;
-      outcome = 'loss';
+      outcome = stopLoss > entryPrice ? 'win' : 'loss'; // Win se trailing stop in profitto
       break;
     }
 
