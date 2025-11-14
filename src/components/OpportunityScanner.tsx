@@ -4,10 +4,11 @@ import { StockService } from '@/services/stockService';
 import { scanForOpportunities, TradingOpportunity, ScannerResult } from '@/utils/opportunityScanner';
 import { detectMarketRegime } from '@/utils/regimeDetection';
 import { calculateTechnicalIndicators } from '@/utils/stockPrediction';
+import { runBacktest, BacktestResult } from '@/utils/backtester';
 import { StockData } from '@/types/stock';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Loader2, Search, TrendingUp, Target, Shield, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Search, TrendingUp, Target, Shield, AlertTriangle, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 export default function OpportunityScanner() {
@@ -16,6 +17,76 @@ export default function OpportunityScanner() {
   const [error, setError] = useState<string>('');
   const [rawDataMap, setRawDataMap] = useState<Map<string, StockData[]>>(new Map());
   const [showRawData, setShowRawData] = useState(false);
+
+  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
+  const [backtestLoading, setBacktestLoading] = useState(false);
+  const [showBacktestTrades, setShowBacktestTrades] = useState(false);
+
+  const handleBacktest = async () => {
+    setBacktestLoading(true);
+    setError('');
+    setBacktestResult(null);
+
+    try {
+      console.log('🔄 Inizio backtest storico (5 anni)...');
+
+      // Scarica 5 anni di dati per tutti i titoli
+      const historicalData = new Map<string, StockData[]>();
+
+      const batchSize = 2;
+      for (let i = 0; i < ITALIAN_STOCKS.length; i += batchSize) {
+        const batch = ITALIAN_STOCKS.slice(i, i + batchSize);
+
+        console.log(`📦 Scarico dati storici: batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(ITALIAN_STOCKS.length / batchSize)}...`);
+
+        const promises = batch.map(async (stock) => {
+          try {
+            // Scarica 5 anni di dati
+            const data = await StockService.getHistoricalData(stock.symbol, '5y', '1d');
+            if (data.length >= 200) {
+              console.log(`✅ ${stock.symbol}: ${data.length} giorni`);
+              historicalData.set(stock.symbol, data);
+            } else {
+              console.log(`⚠️ ${stock.symbol}: dati insufficienti (${data.length} giorni)`);
+            }
+          } catch (err) {
+            console.warn(`❌ ${stock.symbol}: errore`, err);
+          }
+        });
+
+        await Promise.all(promises);
+
+        if (i + batchSize < ITALIAN_STOCKS.length) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+      }
+
+      console.log(`📊 Dati scaricati: ${historicalData.size} titoli`);
+
+      if (historicalData.size === 0) {
+        throw new Error('Nessun dato storico disponibile');
+      }
+
+      // Calcola date start e end (5 anni fa -> oggi)
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setFullYear(endDate.getFullYear() - 5);
+
+      console.log(`🔍 Eseguo backtest da ${startDate.toISOString().split('T')[0]} a ${endDate.toISOString().split('T')[0]}...`);
+
+      // Esegui backtest
+      const result = await runBacktest(historicalData, startDate, endDate);
+
+      console.log(`✅ Backtest completato:`, result);
+
+      setBacktestResult(result);
+    } catch (err) {
+      console.error('Backtest error:', err);
+      setError(err instanceof Error ? err.message : 'Errore durante il backtest');
+    } finally {
+      setBacktestLoading(false);
+    }
+  };
 
   const handleScan = async () => {
     setLoading(true);
@@ -164,6 +235,45 @@ export default function OpportunityScanner() {
           <div className="mt-4 p-4 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-800">
               ⏳ Analisi di {ITALIAN_STOCKS.length} titoli in corso... Questo può richiedere 30-60 secondi.
+            </p>
+          </div>
+        )}
+      </Card>
+
+      {/* Backtest Button */}
+      <Card className="p-6 mb-6 border-2 border-purple-300 bg-purple-50">
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="flex-1">
+            <h3 className="font-semibold mb-1 text-purple-900">📊 Backtest Storico (5 Anni)</h3>
+            <p className="text-sm text-purple-800">
+              Testa la strategia su 5 anni di dati storici. Scansiona 1 volta al mese (60 scansioni totali) e simula ogni operazione.
+            </p>
+          </div>
+          <Button
+            onClick={handleBacktest}
+            disabled={backtestLoading || loading}
+            size="lg"
+            variant="outline"
+            className="gap-2 border-purple-400 text-purple-900 hover:bg-purple-100"
+          >
+            {backtestLoading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Backtest in corso...
+              </>
+            ) : (
+              <>
+                <BarChart3 className="h-5 w-5" />
+                Avvia Backtest
+              </>
+            )}
+          </Button>
+        </div>
+
+        {backtestLoading && (
+          <div className="mt-4 p-4 bg-purple-100 rounded-lg">
+            <p className="text-sm text-purple-900">
+              ⏳ Download di 5 anni di dati storici in corso... Questo può richiedere 3-5 minuti.
             </p>
           </div>
         )}
@@ -329,6 +439,138 @@ export default function OpportunityScanner() {
               <li>• Expected return è AL NETTO di costi di trading stimati (0.2% round-trip)</li>
             </ul>
           </Card>
+        </div>
+      )}
+
+      {/* Backtest Results */}
+      {backtestResult && (
+        <div className="space-y-6 mt-6">
+          {/* Summary Stats */}
+          <Card className="p-6 border-2 border-purple-500 bg-purple-50">
+            <h2 className="text-2xl font-bold mb-4 text-purple-900">📊 Risultati Backtest Storico</h2>
+            <div className="bg-white p-4 rounded-lg mb-4">
+              <p className="text-sm text-muted-foreground mb-2">
+                Periodo: {backtestResult.startDate} → {backtestResult.endDate}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Scansioni eseguite: {backtestResult.totalScans} (1 al mese)
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-lg border-2 border-purple-300">
+                <p className="text-xs text-muted-foreground mb-1">Opportunità Trovate</p>
+                <p className="text-3xl font-bold text-purple-900">{backtestResult.totalOpportunitiesFound}</p>
+                <p className="text-xs text-muted-foreground mt-1">in 5 anni</p>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg border-2 border-blue-300">
+                <p className="text-xs text-muted-foreground mb-1">Trade Eseguiti</p>
+                <p className="text-3xl font-bold text-blue-900">{backtestResult.totalTrades}</p>
+                <p className="text-xs text-muted-foreground mt-1">operazioni</p>
+              </div>
+
+              <div className={`bg-white p-4 rounded-lg border-2 ${backtestResult.winRate >= 50 ? 'border-green-300' : 'border-red-300'}`}>
+                <p className="text-xs text-muted-foreground mb-1">Win Rate</p>
+                <p className={`text-3xl font-bold ${backtestResult.winRate >= 50 ? 'text-green-700' : 'text-red-700'}`}>
+                  {backtestResult.winRate.toFixed(1)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {backtestResult.wins}W / {backtestResult.losses}L
+                </p>
+              </div>
+
+              <div className={`bg-white p-4 rounded-lg border-2 ${backtestResult.avgReturnPerTrade >= 0 ? 'border-green-300' : 'border-red-300'}`}>
+                <p className="text-xs text-muted-foreground mb-1">Return Medio</p>
+                <p className={`text-3xl font-bold ${backtestResult.avgReturnPerTrade >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  {backtestResult.avgReturnPerTrade >= 0 ? '+' : ''}{backtestResult.avgReturnPerTrade.toFixed(2)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">per trade</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-lg">
+                <p className="text-sm font-semibold text-green-700 mb-1">Avg Win</p>
+                <p className="text-2xl font-bold text-green-700">+{backtestResult.avgWin.toFixed(2)}%</p>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg">
+                <p className="text-sm font-semibold text-red-700 mb-1">Avg Loss</p>
+                <p className="text-2xl font-bold text-red-700">-{backtestResult.avgLoss.toFixed(2)}%</p>
+              </div>
+
+              <div className="bg-white p-4 rounded-lg">
+                <p className="text-sm font-semibold text-purple-900 mb-1">Profit Factor</p>
+                <p className="text-2xl font-bold text-purple-900">{backtestResult.profitFactor.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-1">(profitti/perdite)</p>
+              </div>
+            </div>
+
+            <div className="mt-6 p-4 bg-white rounded-lg border-2 border-purple-400">
+              <p className="text-sm font-semibold mb-2">💰 Rendimento Totale Stimato:</p>
+              <p className={`text-4xl font-bold ${backtestResult.totalReturn >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                {backtestResult.totalReturn >= 0 ? '+' : ''}{backtestResult.totalReturn.toFixed(2)}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Assumendo position size del 5% per ogni trade e compounding dei profitti
+              </p>
+            </div>
+          </Card>
+
+          {/* Trades List */}
+          {backtestResult.trades.length > 0 && (
+            <Card className="p-6 border-2 border-gray-300">
+              <div
+                className="flex items-center justify-between cursor-pointer"
+                onClick={() => setShowBacktestTrades(!showBacktestTrades)}
+              >
+                <h3 className="font-bold text-lg">
+                  📋 Elenco Completo Trade ({backtestResult.trades.length}) - CLICCA QUI
+                </h3>
+                {showBacktestTrades ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </div>
+
+              {showBacktestTrades && (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left border-b-2">
+                        <th className="pb-2">Data</th>
+                        <th className="pb-2">Titolo</th>
+                        <th className="pb-2">Tipo</th>
+                        <th className="text-right pb-2">Entry</th>
+                        <th className="text-right pb-2">Exit</th>
+                        <th className="text-right pb-2">Return</th>
+                        <th className="text-center pb-2">Giorni</th>
+                        <th className="text-center pb-2">Esito</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {backtestResult.trades.map((trade, idx) => (
+                        <tr key={idx} className="border-b hover:bg-gray-50">
+                          <td className="py-2">{trade.date}</td>
+                          <td className="py-2 font-medium">{trade.stockName}</td>
+                          <td className="py-2 text-xs">{trade.type}</td>
+                          <td className="text-right py-2">€{trade.entryPrice.toFixed(3)}</td>
+                          <td className="text-right py-2">€{trade.exitPrice.toFixed(3)}</td>
+                          <td className={`text-right py-2 font-bold ${trade.actualReturn >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                            {trade.actualReturn >= 0 ? '+' : ''}{trade.actualReturn.toFixed(2)}%
+                          </td>
+                          <td className="text-center py-2">{trade.daysHeld}</td>
+                          <td className="text-center py-2">
+                            {trade.outcome === 'win' && <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-bold">WIN</span>}
+                            {trade.outcome === 'loss' && <span className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-bold">LOSS</span>}
+                            {trade.outcome === 'breakeven' && <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs font-bold">B/E</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          )}
         </div>
       )}
 
