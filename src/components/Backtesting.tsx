@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ITALIAN_STOCKS } from '@/config/italianStocks';
 import { StockService } from '@/services/stockService';
 import { backtest, BacktestReport, getPerformanceRating, generateRecommendations } from '@/utils/backtesting';
+import { analyzeFundamentals } from '@/utils/fundamentalAnalysis';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -46,8 +47,25 @@ export default function Backtesting() {
         throw new Error('Dati insufficienti per il backtesting');
       }
 
-      // Run backtest
-      const backtestReport = backtest(selectedStock, data, parseInt(testDays), 60);
+      // Fetch fundamentals once for efficiency (optional)
+      let fundamentalAnalysis = undefined;
+      try {
+        const stockInfo = ITALIAN_STOCKS.find(s => s.symbol === selectedStock);
+        const fundamentalData = await StockService.getFundamentals(selectedStock);
+        fundamentalAnalysis = analyzeFundamentals(fundamentalData, stockInfo?.sector || 'General');
+        console.log('Fundamentals fetched successfully for backtesting');
+      } catch (fundError) {
+        console.warn('Could not fetch fundamentals for backtesting, proceeding with technical analysis only:', fundError);
+      }
+
+      // Run backtest with optional fundamentals
+      const backtestReport = backtest(selectedStock, data, parseInt(testDays), 60, fundamentalAnalysis);
+
+      // Add fundamentals to report for display
+      if (fundamentalAnalysis) {
+        backtestReport.fundamentals = fundamentalAnalysis;
+      }
+
       setReport(backtestReport);
     } catch (err) {
       console.error('Error running backtest:', err);
@@ -167,10 +185,19 @@ export default function Backtesting() {
                       Valutazione: {rating.rating === 'excellent' ? 'Eccellente' : rating.rating === 'good' ? 'Buono' : rating.rating === 'fair' ? 'Discreto' : 'Scarso'}
                     </h2>
                     <p className="text-sm mb-4">{rating.message}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Periodo: {new Date(report.startDate).toLocaleDateString('it-IT')} - {new Date(report.endDate).toLocaleDateString('it-IT')}
-                      ({report.statistics.totalPredictions} previsioni)
-                    </p>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p>
+                        Periodo: {new Date(report.startDate).toLocaleDateString('it-IT')} - {new Date(report.endDate).toLocaleDateString('it-IT')}
+                        ({report.statistics.totalPredictions} previsioni)
+                      </p>
+                      <p className="flex items-center gap-1">
+                        {report.fundamentals ? (
+                          <span className="text-green-700 font-medium">✓ Con analisi fondamentale</span>
+                        ) : (
+                          <span className="text-orange-700">• Solo analisi tecnica</span>
+                        )}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </Card>

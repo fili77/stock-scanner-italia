@@ -1,4 +1,4 @@
-import { StockData } from '@/types/stock';
+import { StockData, FundamentalAnalysis } from '@/types/stock';
 import { predictStock } from './stockPrediction';
 
 export interface BacktestResult {
@@ -38,6 +38,7 @@ export interface BacktestReport {
   endDate: string;
   results: BacktestResult[];
   statistics: BacktestStatistics;
+  fundamentals?: FundamentalAnalysis; // Optional fundamental data used in testing
 }
 
 /**
@@ -46,12 +47,14 @@ export interface BacktestReport {
  * @param stockData Historical stock data
  * @param testDays Number of days to test (default: last 60 days)
  * @param minDataPoints Minimum data points needed for prediction (default: 60)
+ * @param fundamentals Optional fundamental analysis (fetched once for efficiency)
  */
 export function backtest(
   symbol: string,
   stockData: StockData[],
   testDays: number = 60,
-  minDataPoints: number = 60
+  minDataPoints: number = 60,
+  fundamentals?: FundamentalAnalysis
 ): BacktestReport {
   if (stockData.length < minDataPoints + testDays) {
     throw new Error(
@@ -69,8 +72,8 @@ export function backtest(
     const historicalData = stockData.slice(0, i + 1);
 
     try {
-      // Make prediction
-      const prediction = predictStock(symbol, historicalData);
+      // Make prediction (with optional fundamentals for efficiency)
+      const prediction = predictStock(symbol, historicalData, fundamentals);
 
       // Get actual next day price
       const actualNextDay = stockData[i + 1];

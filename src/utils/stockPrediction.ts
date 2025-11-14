@@ -1,4 +1,4 @@
-import { StockData, StockPrediction, TechnicalIndicators } from '@/types/stock';
+import { StockData, StockPrediction, TechnicalIndicators, FundamentalAnalysis } from '@/types/stock';
 import {
   calculateOBV,
   calculateVWAP,
@@ -427,8 +427,15 @@ export function generateRecommendation(
 
 /**
  * Main prediction function with advanced volume analysis
+ * @param symbol Stock symbol
+ * @param stockData Historical stock data
+ * @param fundamentals Optional fundamental analysis (for backtesting optimization)
  */
-export function predictStock(symbol: string, stockData: StockData[]): StockPrediction {
+export function predictStock(
+  symbol: string,
+  stockData: StockData[],
+  fundamentals?: FundamentalAnalysis
+): StockPrediction {
   if (stockData.length < 50) {
     throw new Error('Dati insufficienti per la previsione (minimo 50 giorni)');
   }
@@ -499,7 +506,19 @@ export function predictStock(symbol: string, stockData: StockData[]): StockPredi
   const signals = generateSignals(stockData, indicators);
   const trend = determineTrend(stockData, indicators);
   const confidence = calculateConfidence(stockData, indicators, signals);
-  const recommendation = generateRecommendation(trend, indicators, confidence);
+  let recommendation = generateRecommendation(trend, indicators, confidence);
+
+  // If fundamentals provided, combine with technical recommendation
+  let combinedScore: number | undefined = undefined;
+  let fundamentalSignals: string[] | undefined = undefined;
+
+  if (fundamentals) {
+    const { combineRecommendations } = require('./fundamentalAnalysis');
+    const combined = combineRecommendations(recommendation, fundamentals.recommendation);
+    recommendation = combined.recommendation;
+    combinedScore = combined.score;
+    fundamentalSignals = fundamentals.signals;
+  }
 
   return {
     symbol,
@@ -509,8 +528,13 @@ export function predictStock(symbol: string, stockData: StockData[]): StockPredi
     predictedChangePercent,
     confidence,
     trend,
-    signals,
+    signals: {
+      ...signals,
+      ...(fundamentalSignals && { fundamental: fundamentalSignals }),
+    },
     indicators,
+    ...(fundamentals && { fundamentals }),
     recommendation,
+    ...(combinedScore !== undefined && { combinedScore }),
   };
 }
