@@ -40,11 +40,11 @@ export default function Backtesting() {
     setReport(null);
 
     try {
-      // Fetch historical data (need more data for backtesting)
-      const data = await StockService.getHistoricalData(selectedStock, '1y', '1d');
+      // Fetch historical data (5 years for reliable backtesting)
+      const data = await StockService.getHistoricalData(selectedStock, '5y', '1d');
 
       if (data.length < parseInt(testDays) + 60) {
-        throw new Error('Dati insufficienti per il backtesting');
+        throw new Error(`Dati insufficienti per il backtesting. Servono almeno ${parseInt(testDays) + 60} giorni, disponibili: ${data.length}`);
       }
 
       // Fetch fundamentals once for efficiency (optional)
@@ -112,10 +112,13 @@ export default function Backtesting() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="30">30 giorni</SelectItem>
-                <SelectItem value="60">60 giorni</SelectItem>
-                <SelectItem value="90">90 giorni</SelectItem>
-                <SelectItem value="120">120 giorni</SelectItem>
+                <SelectItem value="60">60 giorni (~3 mesi)</SelectItem>
+                <SelectItem value="90">90 giorni (~3 mesi)</SelectItem>
+                <SelectItem value="120">120 giorni (~6 mesi)</SelectItem>
+                <SelectItem value="180">180 giorni (~9 mesi)</SelectItem>
+                <SelectItem value="250">250 giorni (~1 anno)</SelectItem>
+                <SelectItem value="365">365 giorni (~1.5 anni)</SelectItem>
+                <SelectItem value="500">500 giorni (~2 anni)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -148,7 +151,7 @@ export default function Backtesting() {
               <span className="font-medium">{selectedStockInfo.name}</span>
               <br />
               <span className="text-muted-foreground">
-                Verranno testati gli ultimi {testDays} giorni di previsioni su dati storici
+                Verranno testati gli ultimi {testDays} giorni di previsioni su 5 anni di dati storici
               </span>
             </p>
           </div>
