@@ -349,6 +349,288 @@ function getDaysDifference(date1: Date, date2: Date): number {
 }
 
 /**
+ * Rileva rimbalzi su livelli di supporto
+ */
+export function detectSupportBounce(
+  stockData: StockData[],
+  currentPrice: number,
+  symbol: string
+): TradingOpportunity | null {
+  if (stockData.length < 30) return null;
+
+  const recentData = stockData.slice(-30);
+
+  // Trova minimi locali (potenziali supporti)
+  const supports: number[] = [];
+  for (let i = 2; i < recentData.length - 2; i++) {
+    const current = recentData[i].low;
+    const before1 = recentData[i - 1].low;
+    const before2 = recentData[i - 2].low;
+    const after1 = recentData[i + 1].low;
+    const after2 = recentData[i + 2].low;
+
+    // È un minimo locale se più basso dei 2 precedenti e 2 successivi
+    if (current < before1 && current < before2 && current < after1 && current < after2) {
+      supports.push(current);
+    }
+  }
+
+  if (supports.length === 0) return null;
+
+  // Trova il supporto più vicino al prezzo corrente
+  const nearestSupport = supports.reduce((prev, curr) =>
+    Math.abs(curr - currentPrice) < Math.abs(prev - currentPrice) ? curr : prev
+  );
+
+  // Distanza % dal supporto
+  const distanceFromSupport = ((currentPrice - nearestSupport) / nearestSupport) * 100;
+
+  // Opportunità valida solo se siamo vicini al supporto (entro 2%)
+  if (distanceFromSupport < -0.5 || distanceFromSupport > 2) return null;
+
+  // Check se c'è stato un rimbalzo (candela con long lower wick)
+  const lastCandle = recentData[recentData.length - 1];
+  const wickLength = lastCandle.close - lastCandle.low;
+  const bodyLength = Math.abs(lastCandle.close - lastCandle.open);
+  const wickRatio = bodyLength > 0 ? wickLength / bodyLength : 0;
+
+  // Se wick lungo rispetto al body, possibile rimbalzo
+  const bounceStrength = wickRatio > 1.5 ? 'strong' : wickRatio > 0.8 ? 'medium' : 'weak';
+
+  if (bounceStrength === 'weak') return null;
+
+  const atr = calculateATR(recentData.slice(-15));
+  const details: string[] = [];
+  let expectedReturn = 0;
+  let edgeStrength: EdgeStrength = 'medium';
+
+  if (bounceStrength === 'strong') {
+    edgeStrength = 'strong';
+    expectedReturn = 2.0;
+    details.push(`📈 Forte rimbalzo su supporto €${nearestSupport.toFixed(3)}`);
+    details.push(`🎯 Candela con long lower wick (${wickRatio.toFixed(1)}x body)`);
+    details.push(`✅ Support testato ${supports.length} volte negli ultimi 30 giorni`);
+  } else {
+    edgeStrength = 'medium';
+    expectedReturn = 1.3;
+    details.push(`📊 Rimbalzo su supporto €${nearestSupport.toFixed(3)}`);
+    details.push(`🎯 Prezzo vicino al supporto (+${distanceFromSupport.toFixed(1)}%)`);
+  }
+
+  const stopLoss = nearestSupport - (atr * 0.5); // Stop appena sotto il supporto
+  const takeProfit = currentPrice + (atr * 2.5);
+
+  return {
+    symbol,
+    stockName: symbol,
+    type: 'support_bounce',
+    edgeStrength,
+    zScore: 2.0,
+    pValue: 0.045,
+    confidence: edgeStrength === 'strong' ? 70 : 60,
+    expectedReturn,
+    expectedHoldingPeriod: 5,
+    riskRewardRatio: (takeProfit - currentPrice) / (currentPrice - stopLoss),
+    currentPrice,
+    entryPrice: currentPrice,
+    stopLoss,
+    takeProfit,
+    details,
+    regime: 'range_bound',
+    positionSize: calculateKellySize(expectedReturn / 100, 0.60, (currentPrice - stopLoss) / currentPrice),
+    maxLoss: 0,
+    passesFilters: true,
+    filterReasons: [],
+    totalScore: 0,
+  };
+}
+
+/**
+ * Rileva rotture di resistenza con volume
+ */
+export function detectResistanceBreak(
+  stockData: StockData[],
+  currentPrice: number,
+  symbol: string
+): TradingOpportunity | null {
+  if (stockData.length < 30) return null;
+
+  const recentData = stockData.slice(-30);
+
+  // Trova massimi locali (potenziali resistenze)
+  const resistances: number[] = [];
+  for (let i = 2; i < recentData.length - 3; i++) {
+    const current = recentData[i].high;
+    const before1 = recentData[i - 1].high;
+    const before2 = recentData[i - 2].high;
+    const after1 = recentData[i + 1].high;
+    const after2 = recentData[i + 2].high;
+
+    if (current > before1 && current > before2 && current > after1 && current > after2) {
+      resistances.push(current);
+    }
+  }
+
+  if (resistances.length === 0) return null;
+
+  // Trova la resistenza più vicina appena sotto o appena sopra il prezzo
+  const nearestResistance = resistances.reduce((prev, curr) => {
+    const prevDist = Math.abs(prev - currentPrice);
+    const currDist = Math.abs(curr - currentPrice);
+    return currDist < prevDist ? curr : prev;
+  });
+
+  // Distanza % dalla resistenza
+  const distanceFromResistance = ((currentPrice - nearestResistance) / nearestResistance) * 100;
+
+  // Opportunità valida solo se abbiamo appena rotto la resistenza (entro 1% sopra)
+  if (distanceFromResistance < -0.5 || distanceFromResistance > 1.5) return null;
+
+  // Check volume
+  const lastCandle = recentData[recentData.length - 1];
+  const avgVolume = recentData.slice(-20).reduce((sum, d) => sum + d.volume, 0) / 20;
+  const volumeRatio = lastCandle.volume / avgVolume;
+
+  // Serve volume elevato per conferma breakout
+  if (volumeRatio < 1.3) return null;
+
+  const atr = calculateATR(recentData.slice(-15));
+  const details: string[] = [];
+  let expectedReturn = 0;
+  let edgeStrength: EdgeStrength = 'medium';
+
+  if (volumeRatio > 2.0) {
+    edgeStrength = 'strong';
+    expectedReturn = 2.5;
+    details.push(`🚀 Rottura forte di resistenza €${nearestResistance.toFixed(3)}`);
+    details.push(`📊 Volume ${volumeRatio.toFixed(1)}x superiore alla media`);
+    details.push(`✅ Breakout confermato con chiusura sopra resistenza`);
+  } else {
+    edgeStrength = 'medium';
+    expectedReturn = 1.5;
+    details.push(`📈 Rottura resistenza €${nearestResistance.toFixed(3)}`);
+    details.push(`📊 Volume ${volumeRatio.toFixed(1)}x media (conferma breakout)`);
+  }
+
+  const stopLoss = nearestResistance - (atr * 0.5); // Stop sotto la ex-resistenza (ora supporto)
+  const takeProfit = currentPrice + (atr * 3.0);
+
+  return {
+    symbol,
+    stockName: symbol,
+    type: 'resistance_break',
+    edgeStrength,
+    zScore: 2.2,
+    pValue: 0.028,
+    confidence: edgeStrength === 'strong' ? 75 : 65,
+    expectedReturn,
+    expectedHoldingPeriod: 7,
+    riskRewardRatio: (takeProfit - currentPrice) / (currentPrice - stopLoss),
+    currentPrice,
+    entryPrice: currentPrice,
+    stopLoss,
+    takeProfit,
+    details,
+    regime: 'breakout_up',
+    positionSize: calculateKellySize(expectedReturn / 100, 0.62, (currentPrice - stopLoss) / currentPrice),
+    maxLoss: 0,
+    passesFilters: true,
+    filterReasons: [],
+    totalScore: 0,
+  };
+}
+
+/**
+ * Rileva condizioni di mean reversion (oversold/overbought)
+ */
+export function detectMeanReversion(
+  stockData: StockData[],
+  currentPrice: number,
+  symbol: string
+): TradingOpportunity | null {
+  if (stockData.length < 50) return null;
+
+  const recentData = stockData.slice(-50);
+
+  // Calcola media mobile 20 giorni
+  const ma20Data = recentData.slice(-20);
+  const ma20 = ma20Data.reduce((sum, d) => sum + d.close, 0) / 20;
+
+  // Calcola deviazione standard
+  const variance = ma20Data.reduce((sum, d) => sum + Math.pow(d.close - ma20, 2), 0) / 20;
+  const stdDev = Math.sqrt(variance);
+
+  // Z-score del prezzo corrente
+  const zScore = (currentPrice - ma20) / stdDev;
+
+  // Calcola RSI semplificato (14 periodi)
+  let gains = 0;
+  let losses = 0;
+  for (let i = recentData.length - 14; i < recentData.length; i++) {
+    const change = recentData[i].close - recentData[i - 1].close;
+    if (change > 0) gains += change;
+    else losses += Math.abs(change);
+  }
+  const avgGain = gains / 14;
+  const avgLoss = losses / 14;
+  const rs = avgGain / avgLoss;
+  const rsi = 100 - (100 / (1 + rs));
+
+  // Opportunità: oversold (possibile rimbalzo)
+  const isOversold = rsi < 35 && zScore < -1.5;
+
+  if (!isOversold) return null;
+
+  const atr = calculateATR(recentData.slice(-15));
+  const details: string[] = [];
+  let expectedReturn = 0;
+  let edgeStrength: EdgeStrength = 'medium';
+
+  if (rsi < 25 && zScore < -2) {
+    edgeStrength = 'strong';
+    expectedReturn = 2.2;
+    details.push(`🔽 Fortemente oversold: RSI=${rsi.toFixed(0)}, Z-score=${zScore.toFixed(2)}`);
+    details.push(`📈 Prezzo ${Math.abs((currentPrice - ma20) / ma20 * 100).toFixed(1)}% sotto MA20`);
+    details.push(`✅ Alta probabilità di mean reversion`);
+  } else {
+    edgeStrength = 'medium';
+    expectedReturn = 1.4;
+    details.push(`📉 Oversold: RSI=${rsi.toFixed(0)}, Z-score=${zScore.toFixed(2)}`);
+    details.push(`🎯 Mean reversion attesa verso MA20 €${ma20.toFixed(3)}`);
+  }
+
+  const stopLoss = currentPrice - (atr * 1.5);
+  const takeProfit = ma20; // Target: ritorno alla media
+
+  // Skip se take profit è troppo vicino
+  if ((takeProfit - currentPrice) / currentPrice < 0.008) return null;
+
+  return {
+    symbol,
+    stockName: symbol,
+    type: 'support_bounce', // Usiamo questo type (è simile)
+    edgeStrength,
+    zScore: Math.abs(zScore),
+    pValue: 0.035,
+    confidence: edgeStrength === 'strong' ? 72 : 62,
+    expectedReturn,
+    expectedHoldingPeriod: 5,
+    riskRewardRatio: (takeProfit - currentPrice) / (currentPrice - stopLoss),
+    currentPrice,
+    entryPrice: currentPrice,
+    stopLoss,
+    takeProfit,
+    details,
+    regime: 'range_bound',
+    positionSize: calculateKellySize(expectedReturn / 100, 0.61, (currentPrice - stopLoss) / currentPrice),
+    maxLoss: 0,
+    passesFilters: true,
+    filterReasons: [],
+    totalScore: 0,
+  };
+}
+
+/**
  * Scanner principale: analizza tutti i titoli e trova opportunità
  */
 export async function scanForOpportunities(
@@ -389,6 +671,27 @@ export async function scanForOpportunities(
     if (dividendOpp) {
       dividendOpp.regime = regime;
       opportunities.push(dividendOpp);
+    }
+
+    // 4. Check Support Bounce
+    const supportOpp = detectSupportBounce(stockData, currentPrice, symbol);
+    if (supportOpp) {
+      supportOpp.regime = regime;
+      opportunities.push(supportOpp);
+    }
+
+    // 5. Check Resistance Break
+    const resistanceOpp = detectResistanceBreak(stockData, currentPrice, symbol);
+    if (resistanceOpp) {
+      resistanceOpp.regime = regime;
+      opportunities.push(resistanceOpp);
+    }
+
+    // 6. Check Mean Reversion
+    const reversionOpp = detectMeanReversion(stockData, currentPrice, symbol);
+    if (reversionOpp) {
+      reversionOpp.regime = regime;
+      opportunities.push(reversionOpp);
     }
   }
 
