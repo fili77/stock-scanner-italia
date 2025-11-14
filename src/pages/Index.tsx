@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Scan, Settings, FileSpreadsheet, ImagePlus, UserPlus, BookPlus, TrendingUp } from 'lucide-react';
+import { BookOpen, Scan, Settings, FileSpreadsheet, ImagePlus, UserPlus, BookPlus, TrendingUp, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Header from '@/components/Header';
 import SignatureSheetSelector from '@/components/SignatureSheetSelector';
@@ -44,6 +44,13 @@ const Index = () => {
       description: 'Analizza e prevedi titoli azionari italiani',
       to: '/stock-prediction',
       color: 'bg-emerald-600',
+    },
+    {
+      icon: <Search className="h-6 w-6" />,
+      title: 'Opportunity Scanner',
+      description: 'Scansiona 30 titoli per opportunità con edge statistico',
+      to: '/opportunity-scanner',
+      color: 'bg-yellow-600',
     },
     {
       icon: <Settings className="h-6 w-6" />,

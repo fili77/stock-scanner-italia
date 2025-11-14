@@ -12,6 +12,7 @@ import SettingsPage from "./pages/SettingsPage";
 import ManualAttendancePage from "./pages/ManualAttendancePage";
 import StockPredictionPage from "./pages/StockPredictionPage";
 import BacktestingPage from "./pages/BacktestingPage";
+import OpportunityScannerPage from "./pages/OpportunityScannerPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/manual-attendance" element={<ManualAttendancePage />} />
           <Route path="/stock-prediction" element={<StockPredictionPage />} />
           <Route path="/backtesting" element={<BacktestingPage />} />
+          <Route path="/opportunity-scanner" element={<OpportunityScannerPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
