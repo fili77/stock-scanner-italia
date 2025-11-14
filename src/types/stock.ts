@@ -30,6 +30,17 @@ export interface TechnicalIndicators {
   bollingerUpper: number;
   bollingerMiddle: number;
   bollingerLower: number;
+  // Volume-based indicators
+  obv: number;
+  obvTrend: 'up' | 'down' | 'neutral';
+  vwap: number;
+  mfi: number;
+  cmf: number;
+  // Advanced indicators
+  adx: number;
+  stochasticK: number;
+  stochasticD: number;
+  atr: number;
 }
 
 export interface StockPrediction {

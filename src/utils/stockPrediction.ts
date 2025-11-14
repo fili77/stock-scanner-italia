@@ -1,4 +1,15 @@
 import { StockData, StockPrediction, TechnicalIndicators } from '@/types/stock';
+import {
+  calculateOBV,
+  calculateVWAP,
+  calculateMFI,
+  calculateCMF,
+  calculateADX,
+  calculateStochastic,
+  calculateATR,
+  detectDivergence,
+  isVolumeBreakout,
+} from './advancedIndicators';
 
 /**
  * Calculate Simple Moving Average
@@ -119,6 +130,21 @@ export function calculateTechnicalIndicators(stockData: StockData[]): TechnicalI
   const macd = calculateMACD(closePrices);
   const bollinger = calculateBollingerBands(closePrices);
 
+  // Volume-based indicators
+  const obvValues = calculateOBV(stockData);
+  const currentOBV = obvValues[obvValues.length - 1];
+  const prevOBV = obvValues[obvValues.length - 2] || currentOBV;
+  const obvTrend = currentOBV > prevOBV ? 'up' : currentOBV < prevOBV ? 'down' : 'neutral';
+
+  const vwap = calculateVWAP(stockData);
+  const mfi = calculateMFI(stockData);
+  const cmf = calculateCMF(stockData);
+
+  // Advanced indicators
+  const adx = calculateADX(stockData);
+  const stochastic = calculateStochastic(stockData);
+  const atr = calculateATR(stockData);
+
   return {
     sma20: calculateSMA(closePrices, 20),
     sma50: calculateSMA(closePrices, 50),
@@ -131,6 +157,17 @@ export function calculateTechnicalIndicators(stockData: StockData[]): TechnicalI
     bollingerUpper: bollinger.upper,
     bollingerMiddle: bollinger.middle,
     bollingerLower: bollinger.lower,
+    // Volume-based
+    obv: currentOBV,
+    obvTrend,
+    vwap,
+    mfi,
+    cmf,
+    // Advanced
+    adx,
+    stochasticK: stochastic.k,
+    stochasticD: stochastic.d,
+    atr,
   };
 }
 
@@ -195,7 +232,7 @@ export function calculateConfidence(
 }
 
 /**
- * Generate trading signals
+ * Generate trading signals with advanced volume analysis
  */
 export function generateSignals(
   stockData: StockData[],
@@ -209,6 +246,10 @@ export function generateSignals(
 
   const currentPrice = stockData[stockData.length - 1].close;
   const previousPrice = stockData[stockData.length - 2]?.close || currentPrice;
+
+  // Check for patterns
+  const divergence = detectDivergence(stockData);
+  const volumeBreakout = isVolumeBreakout(stockData);
 
   // Technical signals
   if (currentPrice > indicators.sma20) {
@@ -229,6 +270,20 @@ export function generateSignals(
     signals.technical.push('Prezzo sotto Bollinger inferiore (ipervenduto)');
   }
 
+  // VWAP signal (importante!)
+  if (currentPrice > indicators.vwap) {
+    signals.technical.push('Prezzo sopra VWAP (forza acquirenti)');
+  } else {
+    signals.technical.push('Prezzo sotto VWAP (forza venditori)');
+  }
+
+  // ADX - forza trend
+  if (indicators.adx > 25) {
+    signals.technical.push(`Trend forte (ADX: ${indicators.adx.toFixed(1)})`);
+  } else {
+    signals.technical.push(`Trend debole (ADX: ${indicators.adx.toFixed(1)})`);
+  }
+
   // Momentum signals
   if (indicators.rsi > 70) {
     signals.momentum.push('RSI ipercomprato (>70)');
@@ -238,30 +293,71 @@ export function generateSignals(
     signals.momentum.push(`RSI neutrale (${indicators.rsi.toFixed(2)})`);
   }
 
+  // MFI (RSI con volume)
+  if (indicators.mfi > 80) {
+    signals.momentum.push('MFI ipercomprato (>80) - pressione vendita');
+  } else if (indicators.mfi < 20) {
+    signals.momentum.push('MFI ipervenduto (<20) - pressione acquisto');
+  } else {
+    signals.momentum.push(`MFI: ${indicators.mfi.toFixed(1)}`);
+  }
+
   if (indicators.macdHistogram > 0 && indicators.macd > indicators.macdSignal) {
     signals.momentum.push('MACD bullish (sopra signal line)');
   } else if (indicators.macdHistogram < 0) {
     signals.momentum.push('MACD bearish (sotto signal line)');
   }
 
-  // Volume signals
+  // Stochastic
+  if (indicators.stochasticK > 80) {
+    signals.momentum.push('Stochastic ipercomprato');
+  } else if (indicators.stochasticK < 20) {
+    signals.momentum.push('Stochastic ipervenduto');
+  }
+
+  // Volume signals - ENHANCED!
   const recentVolumes = stockData.slice(-10).map(d => d.volume);
   const avgVolume = recentVolumes.reduce((a, b) => a + b, 0) / recentVolumes.length;
   const currentVolume = stockData[stockData.length - 1].volume;
 
-  if (currentVolume > avgVolume * 1.5) {
-    signals.volume.push('Volume alto (possibile breakout)');
+  if (volumeBreakout.isBreakout) {
+    signals.volume.push(`🔥 Volume breakout ${volumeBreakout.multiplier.toFixed(1)}x (${volumeBreakout.direction === 'up' ? 'rialzista' : 'ribassista'})`);
+  } else if (currentVolume > avgVolume * 1.5) {
+    signals.volume.push('Volume alto (possibile movimento)');
   } else if (currentVolume < avgVolume * 0.5) {
     signals.volume.push('Volume basso (consolidamento)');
   } else {
     signals.volume.push('Volume normale');
   }
 
+  // OBV trend
+  if (indicators.obvTrend === 'up') {
+    signals.volume.push('OBV in crescita (accumulazione)');
+  } else if (indicators.obvTrend === 'down') {
+    signals.volume.push('OBV in calo (distribuzione)');
+  }
+
+  // CMF - Chaikin Money Flow
+  if (indicators.cmf > 0.1) {
+    signals.volume.push('CMF positivo (pressione acquisto)');
+  } else if (indicators.cmf < -0.1) {
+    signals.volume.push('CMF negativo (pressione vendita)');
+  }
+
+  // Divergence detection
+  if (divergence.hasDivergence) {
+    if (divergence.type === 'bullish') {
+      signals.volume.push('⚠️ Divergenza bullish (possibile rimbalzo)');
+    } else if (divergence.type === 'bearish') {
+      signals.volume.push('⚠️ Divergenza bearish (possibile inversione)');
+    }
+  }
+
   return signals;
 }
 
 /**
- * Determine overall trend
+ * Determine overall trend with volume confirmation
  */
 export function determineTrend(
   stockData: StockData[],
@@ -271,23 +367,38 @@ export function determineTrend(
 
   const currentPrice = stockData[stockData.length - 1].close;
 
-  // Price vs moving averages
+  // Price vs moving averages (3 points)
   if (currentPrice > indicators.sma20) score += 1;
   if (currentPrice > indicators.sma50) score += 1;
-  if (indicators.sma20 > indicators.sma50) score += 2;
+  if (indicators.sma20 > indicators.sma50) score += 1;
 
-  // MACD
+  // Price vs VWAP (2 points - importante!)
+  if (currentPrice > indicators.vwap) score += 2;
+
+  // MACD (2 points)
   if (indicators.macd > indicators.macdSignal) score += 1;
   if (indicators.macdHistogram > 0) score += 1;
 
-  // RSI
+  // RSI & MFI (2 points)
   if (indicators.rsi > 50) score += 1;
+  if (indicators.mfi > 50) score += 1;
 
-  // EMA
+  // EMA (1 point)
   if (indicators.ema12 > indicators.ema26) score += 1;
 
-  if (score >= 6) return 'bullish';
-  if (score <= 2) return 'bearish';
+  // OBV trend (2 points - conferma volume)
+  if (indicators.obvTrend === 'up') score += 2;
+  else if (indicators.obvTrend === 'down') score -= 1;
+
+  // CMF (1 point)
+  if (indicators.cmf > 0) score += 1;
+
+  // Stochastic (1 point)
+  if (indicators.stochasticK > 50) score += 1;
+
+  // Total possible: 16 points
+  if (score >= 10) return 'bullish';
+  if (score <= 5) return 'bearish';
   return 'neutral';
 }
 
@@ -315,7 +426,7 @@ export function generateRecommendation(
 }
 
 /**
- * Main prediction function
+ * Main prediction function with advanced volume analysis
  */
 export function predictStock(symbol: string, stockData: StockData[]): StockPrediction {
   if (stockData.length < 50) {
@@ -326,16 +437,60 @@ export function predictStock(symbol: string, stockData: StockData[]): StockPredi
   const closePrices = stockData.map(d => d.close);
   const currentPrice = closePrices[closePrices.length - 1];
 
+  // Analyze volume patterns
+  const divergence = detectDivergence(stockData);
+  const volumeBreakout = isVolumeBreakout(stockData);
+
   // Use multiple prediction methods
   const regression = linearRegression(closePrices.slice(-30));
   const emaPredict = indicators.ema12; // Short-term trend
   const smaPredict = indicators.sma20; // Medium-term trend
+  const vwapPredict = indicators.vwap; // Volume-weighted average
 
-  // Weighted average of predictions
+  // Calculate dynamic weights based on market conditions
+  let weights = {
+    regression: 0.30,
+    ema: 0.25,
+    sma: 0.20,
+    vwap: 0.25,
+  };
+
+  // Adjust weights based on volume analysis
+  if (volumeBreakout.isBreakout) {
+    // High volume = più peso a trend recenti
+    weights.regression += 0.10;
+    weights.ema += 0.10;
+    weights.vwap -= 0.10;
+    weights.sma -= 0.10;
+  }
+
+  // Se c'è divergenza, diamo più peso a VWAP (valore "giusto")
+  if (divergence.hasDivergence) {
+    weights.vwap += 0.15;
+    weights.regression -= 0.10;
+    weights.sma -= 0.05;
+  }
+
+  // Se ADX alto (trend forte), più peso a indicatori di trend
+  if (indicators.adx > 25) {
+    weights.ema += 0.10;
+    weights.sma += 0.05;
+    weights.regression -= 0.10;
+    weights.vwap -= 0.05;
+  }
+
+  // Normalize weights
+  const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+  Object.keys(weights).forEach(key => {
+    weights[key as keyof typeof weights] /= totalWeight;
+  });
+
+  // Weighted prediction
   const predictedPrice = (
-    regression.prediction * 0.4 +
-    emaPredict * 0.35 +
-    smaPredict * 0.25
+    regression.prediction * weights.regression +
+    emaPredict * weights.ema +
+    smaPredict * weights.sma +
+    vwapPredict * weights.vwap
   );
 
   const predictedChange = predictedPrice - currentPrice;
