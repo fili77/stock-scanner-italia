@@ -432,11 +432,15 @@ export function generateRecommendation(
  * @param symbol Stock symbol
  * @param stockData Historical stock data
  * @param fundamentals Optional fundamental analysis (for backtesting optimization)
+ * @param sector Stock sector (for correlation analysis)
+ * @param globalIndicesData Optional global indices data for correlation analysis
  */
 export function predictStock(
   symbol: string,
   stockData: StockData[],
-  fundamentals?: FundamentalAnalysis
+  fundamentals?: FundamentalAnalysis,
+  sector?: string,
+  globalIndicesData?: Map<string, StockData[]>
 ): StockPrediction {
   if (stockData.length < 50) {
     throw new Error('Dati insufficienti per la previsione (minimo 50 giorni)');
@@ -570,6 +574,44 @@ export function predictStock(
     confidence = confidence * srAdjustment.confidence;
   }
 
+  // Analyze Global Market Correlations (if data available)
+  let globalMarketSignals: string[] | undefined = undefined;
+  if (globalIndicesData && sector) {
+    try {
+      const { analyzeGlobalCorrelationsSync, calculateGlobalMarketAdjustment } = require('./globalCorrelations');
+
+      const correlationAnalysis = analyzeGlobalCorrelationsSync(
+        symbol,
+        sector,
+        stockData,
+        globalIndicesData
+      );
+
+      globalMarketSignals = correlationAnalysis.signals;
+
+      // Adjust prediction based on global market sentiment
+      const globalAdjustment = calculateGlobalMarketAdjustment(correlationAnalysis, trend);
+
+      if (Math.abs(globalAdjustment.adjustment) > 0.01) {
+        // Apply adjustment
+        predictedPrice = predictedPrice * (1 + globalAdjustment.adjustment);
+        predictedChange = predictedPrice - currentPrice;
+        predictedChangePercent = (predictedChange / currentPrice) * 100;
+
+        // Add adjustment reason to signals
+        if (globalAdjustment.reason) {
+          globalMarketSignals.push(`🎯 ${globalAdjustment.reason}`);
+        }
+      }
+
+      // Adjust confidence based on correlation strength
+      confidence = Math.min(confidence * (correlationAnalysis.confidence / 100 + 0.5), 95);
+    } catch (error) {
+      console.warn('Global correlation analysis failed:', error);
+      // Continue without global correlations
+    }
+  }
+
   return {
     symbol,
     currentPrice,
@@ -583,6 +625,7 @@ export function predictStock(
       ...(fundamentalSignals && { fundamental: fundamentalSignals }),
       ...(eventSignals && { events: eventSignals }),
       ...(srSignals && { supportResistance: srSignals }),
+      ...(globalMarketSignals && { globalMarkets: globalMarketSignals }),
     },
     indicators,
     ...(fundamentals && { fundamentals }),

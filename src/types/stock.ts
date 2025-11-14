@@ -58,6 +58,7 @@ export interface StockPrediction {
     fundamental?: string[];
     events?: string[]; // Earnings, dividends, etc.
     supportResistance?: string[]; // Support/Resistance levels
+    globalMarkets?: string[]; // Global market correlations
   };
   indicators: TechnicalIndicators;
   fundamentals?: FundamentalAnalysis;

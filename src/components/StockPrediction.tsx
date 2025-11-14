@@ -4,6 +4,7 @@ import { ITALIAN_STOCKS } from '@/config/italianStocks';
 import { StockService } from '@/services/stockService';
 import { predictStock } from '@/utils/stockPrediction';
 import { analyzeFundamentals, combineRecommendations } from '@/utils/fundamentalAnalysis';
+import { SECTOR_CORRELATIONS, STOCK_SPECIFIC_CORRELATIONS } from '@/utils/globalCorrelations';
 import StockChart from './StockChart';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -45,14 +46,32 @@ export default function StockPrediction() {
 
       setStockData(data);
 
-      // Generate technical prediction
-      const pred = predictStock(selectedStock, data);
+      // Get stock sector for correlations
+      const stockInfo = ITALIAN_STOCKS.find(s => s.symbol === selectedStock);
+      const sector = stockInfo?.sector || 'General';
+
+      // Fetch global market indices for correlation analysis
+      let globalIndicesData: Map<string, StockData[]> | undefined = undefined;
+      try {
+        // Determine which indices to fetch
+        let indicesToFetch = SECTOR_CORRELATIONS[sector] || SECTOR_CORRELATIONS['General'];
+        if (STOCK_SPECIFIC_CORRELATIONS[selectedStock]) {
+          indicesToFetch = [...new Set([...indicesToFetch, ...STOCK_SPECIFIC_CORRELATIONS[selectedStock]])];
+        }
+
+        globalIndicesData = await StockService.getGlobalIndicesData(indicesToFetch, '3mo');
+        console.log(`Fetched ${globalIndicesData.size} global indices for correlation analysis`);
+      } catch (globalError) {
+        console.warn('Could not fetch global indices:', globalError);
+        // Continue without global correlations
+      }
+
+      // Generate technical prediction with global correlations
+      const pred = predictStock(selectedStock, data, undefined, sector, globalIndicesData);
 
       // Fetch and analyze fundamental data
       try {
         const fundamentalData = await StockService.getFundamentals(selectedStock);
-        const stockInfo = ITALIAN_STOCKS.find(s => s.symbol === selectedStock);
-        const sector = stockInfo?.sector || 'default';
 
         const fundamentalAnalysis = analyzeFundamentals(fundamentalData, sector);
 
@@ -284,6 +303,27 @@ export default function StockPrediction() {
                     <span className="font-medium">{signal}</span>
                   </div>
                 ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Global Market Correlations */}
+          {prediction.signals.globalMarkets && prediction.signals.globalMarkets.length > 0 && (
+            <Card className="p-6 border-2 border-purple-300 bg-purple-50">
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <span className="text-2xl">🌍</span>
+                Correlazioni Mercati Globali
+              </h3>
+              <div className="space-y-2">
+                {prediction.signals.globalMarkets.map((signal, idx) => (
+                  <div key={idx} className="text-sm flex items-start gap-2 bg-white p-2 rounded">
+                    <span className="mt-0.5">→</span>
+                    <span className="font-medium">{signal}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 text-xs text-purple-800 bg-white p-2 rounded">
+                💡 <strong>Timezone Advantage:</strong> I mercati asiatici hanno già chiuso prima dell'apertura europea, fornendo indicazioni anticipate sul sentiment.
               </div>
             </Card>
           )}

@@ -251,4 +251,56 @@ export class StockService {
 
     return currentTime >= marketOpen && currentTime <= marketClose;
   }
+
+  /**
+   * Fetch multiple indices data at once for correlation analysis
+   */
+  static async getGlobalIndicesData(
+    symbols: string[],
+    period: string = '3mo'
+  ): Promise<Map<string, StockData[]>> {
+    const dataMap = new Map<string, StockData[]>();
+
+    // Fetch in parallel
+    const promises = symbols.map(async symbol => {
+      try {
+        const indexSymbol = this.getIndexSymbol(symbol);
+        const data = await this.getHistoricalData(indexSymbol, period, '1d');
+        return { key: symbol, data };
+      } catch (error) {
+        console.warn(`Failed to fetch ${symbol}:`, error);
+        return { key: symbol, data: [] };
+      }
+    });
+
+    const results = await Promise.all(promises);
+
+    results.forEach(result => {
+      if (result.data.length > 0) {
+        dataMap.set(result.key, result.data);
+      }
+    });
+
+    return dataMap;
+  }
+
+  /**
+   * Convert index key to Yahoo Finance symbol
+   */
+  private static getIndexSymbol(key: string): string {
+    const symbolMap: Record<string, string> = {
+      'SPX': '^GSPC',
+      'NASDAQ': '^IXIC',
+      'DJI': '^DJI',
+      'DAX': '^GDAXI',
+      'FTSE': '^FTSE',
+      'CAC': '^FCHI',
+      'NIKKEI': '^N225',
+      'HSI': '^HSI',
+      'WTI': 'CL=F',
+      'BRENT': 'BZ=F',
+    };
+
+    return symbolMap[key] || key;
+  }
 }
