@@ -270,6 +270,24 @@ export default function StockPrediction() {
             </Card>
           )}
 
+          {/* Support & Resistance */}
+          {prediction.signals.supportResistance && prediction.signals.supportResistance.length > 0 && (
+            <Card className="p-6 border-2 border-blue-300 bg-blue-50">
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <span className="text-2xl">📊</span>
+                Supporti, Resistenze e Pivot Points
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {prediction.signals.supportResistance.map((signal, idx) => (
+                  <div key={idx} className="text-sm flex items-start gap-2 bg-white p-2 rounded">
+                    <span className="mt-0.5">→</span>
+                    <span className="font-medium">{signal}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* Signals */}
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Segnali di Trading</h3>

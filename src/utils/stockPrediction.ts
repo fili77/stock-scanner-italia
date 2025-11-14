@@ -11,6 +11,7 @@ import {
   isVolumeBreakout,
 } from './advancedIndicators';
 import { analyzeFinancialEvents, calculateExpectedDividendDrop } from './financialEvents';
+import { analyzeSupportResistance, calculateSRAdjustment } from './supportResistance';
 
 /**
  * Calculate Simple Moving Average
@@ -547,6 +548,28 @@ export function predictStock(
     }
   }
 
+  // Analyze Support & Resistance levels
+  const srAnalysis = analyzeSupportResistance(stockData);
+  const srSignals = srAnalysis.signals;
+
+  // Adjust prediction based on S/R levels
+  const srAdjustment = calculateSRAdjustment(currentPrice, predictedPrice, srAnalysis);
+  if (srAdjustment.reason) {
+    // Apply S/R adjustment to prediction
+    const srDiff = srAdjustment.adjustedPrice - predictedPrice;
+    if (Math.abs(srDiff) > 0.01) {
+      predictedPrice = srAdjustment.adjustedPrice;
+      predictedChange = predictedPrice - currentPrice;
+      predictedChangePercent = (predictedChange / currentPrice) * 100;
+
+      // Add reason to signals
+      srSignals.push(`🎯 ${srAdjustment.reason}`);
+    }
+
+    // Adjust confidence based on S/R
+    confidence = confidence * srAdjustment.confidence;
+  }
+
   return {
     symbol,
     currentPrice,
@@ -559,6 +582,7 @@ export function predictStock(
       ...signals,
       ...(fundamentalSignals && { fundamental: fundamentalSignals }),
       ...(eventSignals && { events: eventSignals }),
+      ...(srSignals && { supportResistance: srSignals }),
     },
     indicators,
     ...(fundamentals && { fundamentals }),

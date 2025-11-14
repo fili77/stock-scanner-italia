@@ -57,6 +57,7 @@ export interface StockPrediction {
     momentum: string[];
     fundamental?: string[];
     events?: string[]; // Earnings, dividends, etc.
+    supportResistance?: string[]; // Support/Resistance levels
   };
   indicators: TechnicalIndicators;
   fundamentals?: FundamentalAnalysis;
