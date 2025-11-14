@@ -6,64 +6,143 @@ import { detectMarketRegime } from '@/utils/regimeDetection';
 import { calculateTechnicalIndicators } from '@/utils/stockPrediction';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Loader2, Search, TrendingUp, Target, Shield, AlertTriangle } from 'lucide-react';
+import { Progress } from './ui/progress';
+import { Loader2, Search, TrendingUp, Target, Shield, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+
+type DownloadProgress = {
+  current: number;
+  total: number;
+  currentStock: string;
+  succeeded: string[];
+  failed: string[];
+};
 
 export default function OpportunityScanner() {
   const [scanResult, setScanResult] = useState<ScannerResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
 
   const handleScan = async () => {
     setLoading(true);
     setError('');
     setScanResult(null);
+    setDownloadProgress({
+      current: 0,
+      total: ITALIAN_STOCKS.length,
+      currentStock: '',
+      succeeded: [],
+      failed: []
+    });
 
     try {
-      // Fetch data per tutti i titoli FTSE MIB
       const stockDataMap = new Map();
       const fundamentalsMap = new Map();
       const regimeMap = new Map();
 
-      console.log('Inizio scansione di', ITALIAN_STOCKS.length, 'titoli...');
+      console.log('🚀 Inizio scansione di', ITALIAN_STOCKS.length, 'titoli...');
 
-      // Fetch in parallelo (batches di 5 per non sovraccaricare)
+      // Fetch in parallelo (batches di 5)
       const batchSize = 5;
+      let processedCount = 0;
+
       for (let i = 0; i < ITALIAN_STOCKS.length; i += batchSize) {
         const batch = ITALIAN_STOCKS.slice(i, i + batchSize);
 
-        const promises = batch.map(async (stock) => {
-          try {
-            // Fetch historical data (3 mesi)
-            const data = await StockService.getHistoricalData(stock.symbol, '3mo', '1d');
-            if (data.length < 30) return null;
+        const batchResults = await Promise.allSettled(
+          batch.map(async (stock) => {
+            setDownloadProgress(prev => prev ? {
+              ...prev,
+              currentStock: stock.symbol,
+              current: processedCount + 1
+            } : null);
 
-            stockDataMap.set(stock.symbol, data);
-
-            // Fetch fundamentals (optional)
             try {
-              const fundamentalData = await StockService.getFundamentals(stock.symbol);
-              fundamentalsMap.set(stock.symbol, fundamentalData);
-            } catch {
-              // Continue senza fundamentals
+              console.log(`📥 Downloading ${stock.symbol}...`);
+
+              // Fetch historical data (3 mesi)
+              const data = await StockService.getHistoricalData(stock.symbol, '3mo', '1d');
+
+              if (!data || data.length === 0) {
+                throw new Error('Nessun dato ricevuto');
+              }
+
+              if (data.length < 30) {
+                throw new Error(`Dati insufficienti: ${data.length} giorni (minimo 30)`);
+              }
+
+              console.log(`✅ ${stock.symbol}: ${data.length} giorni di dati`);
+              stockDataMap.set(stock.symbol, data);
+
+              // Fetch fundamentals (optional)
+              try {
+                const fundamentalData = await StockService.getFundamentals(stock.symbol);
+                if (fundamentalData) {
+                  fundamentalsMap.set(stock.symbol, fundamentalData);
+                  console.log(`✅ ${stock.symbol}: fundamentals OK`);
+                }
+              } catch {
+                console.log(`⚠️ ${stock.symbol}: fundamentals non disponibili`);
+              }
+
+              // Detect regime
+              const indicators = calculateTechnicalIndicators(data);
+              const regime = detectMarketRegime(data, indicators);
+              regimeMap.set(stock.symbol, regime.regime);
+              console.log(`✅ ${stock.symbol}: regime = ${regime.regime}`);
+
+              return { symbol: stock.symbol, success: true };
+            } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : 'Errore sconosciuto';
+              console.error(`❌ ${stock.symbol}: ${errorMsg}`);
+              return { symbol: stock.symbol, success: false, error: errorMsg };
             }
+          })
+        );
 
-            // Detect regime
-            const indicators = calculateTechnicalIndicators(data);
-            const regime = detectMarketRegime(data, indicators);
-            regimeMap.set(stock.symbol, regime.regime);
+        // Update progress with results
+        batchResults.forEach((result, idx) => {
+          processedCount++;
+          const stock = batch[idx];
 
-            return stock.symbol;
-          } catch (err) {
-            console.warn(`Failed to fetch ${stock.symbol}:`, err);
-            return null;
+          if (result.status === 'fulfilled' && result.value.success) {
+            setDownloadProgress(prev => prev ? {
+              ...prev,
+              current: processedCount,
+              succeeded: [...prev.succeeded, stock.symbol]
+            } : null);
+          } else {
+            const errorMsg = result.status === 'rejected'
+              ? 'Network error'
+              : (result.value as any).error || 'Unknown error';
+
+            setDownloadProgress(prev => prev ? {
+              ...prev,
+              current: processedCount,
+              failed: [...prev.failed, `${stock.symbol} (${errorMsg})`]
+            } : null);
           }
         });
 
-        await Promise.all(promises);
+        // Small delay between batches
+        if (i + batchSize < ITALIAN_STOCKS.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
 
-      console.log('Dati fetched. Inizio analisi...');
+      console.log(`📊 Download completato: ${stockDataMap.size} titoli con dati validi`);
+
+      // Check if we have enough data
+      if (stockDataMap.size === 0) {
+        throw new Error('❌ NESSUN DATO SCARICATO! Impossibile procedere con la scansione. Verifica la connessione internet o riprova più tardi.');
+      }
+
+      if (stockDataMap.size < 10) {
+        console.warn(`⚠️ Solo ${stockDataMap.size} titoli hanno dati validi`);
+      }
+
+      console.log('🔍 Inizio analisi opportunità...');
 
       // Run scanner
       const result = await scanForOpportunities(stockDataMap, fundamentalsMap, regimeMap);
@@ -76,12 +155,15 @@ export default function OpportunityScanner() {
         }
       });
 
+      console.log(`✅ Scansione completata: ${result.opportunities.length} opportunità trovate`);
       setScanResult(result);
+
     } catch (err) {
-      console.error('Scanner error:', err);
+      console.error('💥 Errore scanner:', err);
       setError(err instanceof Error ? err.message : 'Errore durante la scansione');
     } finally {
       setLoading(false);
+      setDownloadProgress(null);
     }
   };
 
@@ -141,10 +223,59 @@ export default function OpportunityScanner() {
           </Button>
         </div>
 
-        {loading && (
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-800">
-              ⏳ Analisi di {ITALIAN_STOCKS.length} titoli in corso... Questo può richiedere 30-60 secondi.
+        {/* Download Progress */}
+        {downloadProgress && (
+          <div className="mt-6 space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium">
+                  📥 Download dati di mercato: {downloadProgress.current}/{downloadProgress.total}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {downloadProgress.currentStock && `Caricamento ${downloadProgress.currentStock}...`}
+                </p>
+              </div>
+              <Progress
+                value={(downloadProgress.current / downloadProgress.total) * 100}
+                className="h-2"
+              />
+            </div>
+
+            {/* Success/Fail Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-green-50 p-3 rounded-lg">
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <p className="text-sm font-medium text-green-800">
+                    Successi: {downloadProgress.succeeded.length}
+                  </p>
+                </div>
+                {downloadProgress.succeeded.length > 0 && (
+                  <div className="text-xs text-green-700 max-h-20 overflow-y-auto">
+                    {downloadProgress.succeeded.slice(-5).join(', ')}
+                    {downloadProgress.succeeded.length > 5 && '...'}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-red-50 p-3 rounded-lg">
+                <div className="flex items-center gap-2 mb-1">
+                  <XCircle className="h-4 w-4 text-red-600" />
+                  <p className="text-sm font-medium text-red-800">
+                    Errori: {downloadProgress.failed.length}
+                  </p>
+                </div>
+                {downloadProgress.failed.length > 0 && (
+                  <div className="text-xs text-red-700 max-h-20 overflow-y-auto">
+                    {downloadProgress.failed.slice(0, 3).map(f => f.split(' (')[0]).join(', ')}
+                    {downloadProgress.failed.length > 3 && '...'}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              💡 Apri la Console del browser (F12) per vedere il log dettagliato di ogni titolo
             </p>
           </div>
         )}
