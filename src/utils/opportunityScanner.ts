@@ -349,115 +349,8 @@ function getDaysDifference(date1: Date, date2: Date): number {
 }
 
 /**
- * Rileva GAP da chiudere (strategia semplice e comune)
- */
-export function detectGapFill(
-  stockData: StockData[],
-  currentPrice: number,
-  symbol: string
-): TradingOpportunity | null {
-  if (stockData.length < 3) return null;
-
-  const today = stockData[stockData.length - 1];
-  const yesterday = stockData[stockData.length - 2];
-
-  // Calcola gap % tra chiusura ieri e apertura oggi
-  const gapPercent = ((today.open - yesterday.close) / yesterday.close) * 100;
-
-  // Gap significativo solo se > 0.8%
-  if (Math.abs(gapPercent) < 0.8) return null;
-
-  const isGapUp = gapPercent > 0;
-  const atr = calculateATR(stockData.slice(-15));
-  const details: string[] = [];
-  let expectedReturn = 0;
-  let edgeStrength: EdgeStrength = 'medium';
-
-  if (isGapUp) {
-    // Gap UP: prezzo apre sopra chiusura precedente
-    // Statisticamente tende a chiudersi (ritorno verso yesterday.close)
-    const gapTarget = yesterday.close;
-    expectedReturn = Math.abs(((gapTarget - currentPrice) / currentPrice) * 100);
-
-    if (Math.abs(gapPercent) > 2) {
-      edgeStrength = 'strong';
-      details.push(`📈 GAP UP ${Math.abs(gapPercent).toFixed(1)}% (forte)`);
-      details.push(`🎯 Target: chiusura gap a €${gapTarget.toFixed(3)}`);
-      details.push(`✅ Statisticamente l'80% dei gap vengono chiusi entro 1-3 giorni`);
-    } else {
-      edgeStrength = 'medium';
-      details.push(`📊 GAP UP ${Math.abs(gapPercent).toFixed(1)}%`);
-      details.push(`🎯 Probabile chiusura parziale del gap`);
-    }
-
-    return {
-      symbol,
-      stockName: symbol,
-      type: 'support_bounce', // Riutilizzo questo type
-      edgeStrength,
-      zScore: 2.0,
-      pValue: 0.04,
-      confidence: Math.abs(gapPercent) > 2 ? 65 : 55,
-      expectedReturn: Math.min(expectedReturn, 2.5),
-      expectedHoldingPeriod: 2,
-      riskRewardRatio: 2.0,
-      currentPrice,
-      entryPrice: currentPrice,
-      stopLoss: currentPrice + (atr * 2.0), // Stop allargato a 2.0 ATR
-      takeProfit: gapTarget,
-      details,
-      regime: 'range_bound',
-      positionSize: calculateKellySize(expectedReturn / 100, 0.65, 0.015),
-      maxLoss: 0,
-      passesFilters: true,
-      filterReasons: [],
-      totalScore: 0,
-    };
-  } else {
-    // Gap DOWN: prezzo apre sotto chiusura precedente
-    // Statisticamente tende a chiudersi (risalita verso yesterday.close)
-    const gapTarget = yesterday.close;
-    expectedReturn = Math.abs(((gapTarget - currentPrice) / currentPrice) * 100);
-
-    if (Math.abs(gapPercent) > 2) {
-      edgeStrength = 'strong';
-      details.push(`📉 GAP DOWN ${Math.abs(gapPercent).toFixed(1)}% (forte)`);
-      details.push(`🎯 Target: chiusura gap a €${gapTarget.toFixed(3)}`);
-      details.push(`✅ Statisticamente l'80% dei gap vengono chiusi entro 1-3 giorni`);
-    } else {
-      edgeStrength = 'medium';
-      details.push(`📊 GAP DOWN ${Math.abs(gapPercent).toFixed(1)}%`);
-      details.push(`🎯 Probabile chiusura parziale del gap (long opportunity)`);
-    }
-
-    return {
-      symbol,
-      stockName: symbol,
-      type: 'support_bounce',
-      edgeStrength,
-      zScore: 2.0,
-      pValue: 0.04,
-      confidence: Math.abs(gapPercent) > 2 ? 65 : 55,
-      expectedReturn: Math.min(expectedReturn, 2.5),
-      expectedHoldingPeriod: 2,
-      riskRewardRatio: 2.0,
-      currentPrice,
-      entryPrice: currentPrice,
-      stopLoss: currentPrice - (atr * 2.0), // Stop allargato a 2.0 ATR
-      takeProfit: gapTarget,
-      details,
-      regime: 'range_bound',
-      positionSize: calculateKellySize(expectedReturn / 100, 0.65, 0.015),
-      maxLoss: 0,
-      passesFilters: true,
-      filterReasons: [],
-      totalScore: 0,
-    };
-  }
-}
-
-/**
  * Rileva momentum semplice (2-3 giorni stessa direzione)
+ * COMPATIBILE CON EOD: scan sera → entry mattina dopo
  */
 export function detectMomentumSimple(
   stockData: StockData[],
@@ -890,61 +783,45 @@ export async function scanForOpportunities(
     const fundamentals = fundamentalsMap.get(symbol) || null;
     const regime = regimeMap.get(symbol) || 'range_bound';
 
-    // 1. Check GAP Fill (strategia semplice, comune)
-    const gapOpp = detectGapFill(stockData, currentPrice, symbol);
-    if (gapOpp) {
-      gapOpp.regime = regime;
-      opportunities.push(gapOpp);
-    }
-
-    // 2. Check Momentum Simple (2-3 giorni)
+    // 1. Check Momentum Simple (2-3 giorni) - COMPATIBILE EOD
     const momentumOpp = detectMomentumSimple(stockData, currentPrice, symbol);
     if (momentumOpp) {
       momentumOpp.regime = regime;
       opportunities.push(momentumOpp);
     }
 
-    // 3. Check Volume Anomaly
-    const volumeOpp = detectVolumeAnomaly(stockData, currentPrice, symbol);
-    if (volumeOpp) {
-      volumeOpp.regime = regime;
-      opportunities.push(volumeOpp);
+    // 2. Check Mean Reversion - COMPATIBILE EOD
+    const reversionOpp = detectMeanReversion(stockData, currentPrice, symbol);
+    if (reversionOpp) {
+      reversionOpp.regime = regime;
+      opportunities.push(reversionOpp);
     }
 
-    // 4. Check Post-Earnings
-    const earningsOpp = detectPostEarnings(symbol, currentPrice, fundamentals);
-    if (earningsOpp) {
-      earningsOpp.regime = regime;
-      opportunities.push(earningsOpp);
-    }
-
-    // 5. Check Pre-Dividend
-    const dividendOpp = detectPreDividend(symbol, currentPrice, fundamentals);
-    if (dividendOpp) {
-      dividendOpp.regime = regime;
-      opportunities.push(dividendOpp);
-    }
-
-    // 6. Check Support Bounce
+    // 3. Check Support Bounce - COMPATIBILE EOD
     const supportOpp = detectSupportBounce(stockData, currentPrice, symbol);
     if (supportOpp) {
       supportOpp.regime = regime;
       opportunities.push(supportOpp);
     }
 
-    // 7. Check Resistance Break
+    // 4. Check Resistance Break - PARZIALMENTE COMPATIBILE EOD
     const resistanceOpp = detectResistanceBreak(stockData, currentPrice, symbol);
     if (resistanceOpp) {
       resistanceOpp.regime = regime;
       opportunities.push(resistanceOpp);
     }
 
-    // 8. Check Mean Reversion
-    const reversionOpp = detectMeanReversion(stockData, currentPrice, symbol);
-    if (reversionOpp) {
-      reversionOpp.regime = regime;
-      opportunities.push(reversionOpp);
+    // 5. Check Volume Anomaly - PARZIALMENTE COMPATIBILE EOD
+    const volumeOpp = detectVolumeAnomaly(stockData, currentPrice, symbol);
+    if (volumeOpp) {
+      volumeOpp.regime = regime;
+      opportunities.push(volumeOpp);
     }
+
+    // RIMOSSE STRATEGIE INCOMPATIBILI CON EOD:
+    // - Gap Fill: il gap si vede solo intraday, incompatibile con dati EOD
+    // - Post-Earnings: richiede fundamentals (401 errors)
+    // - Pre-Dividend: richiede fundamentals (401 errors)
   }
 
   // Filter opportunità

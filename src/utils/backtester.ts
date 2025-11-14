@@ -73,6 +73,11 @@ export interface YearlyBreakdown {
 /**
  * Simula l'esito di un trade dato i dati storici successivi
  * Implementa trailing stop per proteggere i profitti
+ *
+ * REALISTICO PER EOD:
+ * - Scan a fine giornata X
+ * - Entry il giorno X+1 all'OPEN (futureData[0].open)
+ * - Simula da quel punto in avanti
  */
 function simulateTrade(
   opportunity: TradingOpportunity,
@@ -81,12 +86,14 @@ function simulateTrade(
 ): BacktestTrade | null {
   if (futureData.length === 0) return null;
 
-  const entryPrice = opportunity.entryPrice;
-  let stopLoss = opportunity.stopLoss;
-  const takeProfit = opportunity.takeProfit;
+  // ENTRY AL GIORNO SUCCESSIVO (REALISTICO PER EOD)
+  // Scan sera del giorno X → Entry mattina del giorno X+1 all'OPEN
+  const entryPrice = futureData[0].open; // Invece di opportunity.entryPrice!
 
-  // Calcola ATR per trailing stop (approssimazione: 2% del prezzo di entrata)
-  const atrEstimate = entryPrice * 0.02;
+  // Ricalcola stop loss, take profit e trailing basati sul vero entry price
+  const atrEstimate = entryPrice * 0.02; // Approssimazione ATR: 2% del prezzo
+  let stopLoss = entryPrice - (atrEstimate * 2.0); // 2 ATR stop
+  const takeProfit = entryPrice + (atrEstimate * 2.5); // 2.5 ATR target
   const trailingDistance = atrEstimate * 1.5; // Trailing stop a 1.5 ATR dal massimo
 
   let exitPrice = entryPrice;
