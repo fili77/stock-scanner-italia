@@ -56,6 +56,7 @@ export interface StockPrediction {
     volume: string[];
     momentum: string[];
     fundamental?: string[];
+    events?: string[]; // Earnings, dividends, etc.
   };
   indicators: TechnicalIndicators;
   fundamentals?: FundamentalAnalysis;
@@ -98,6 +99,11 @@ export interface FundamentalData {
   marketCap: number | null;
   beta: number | null;
   sharesOutstanding: number | null;
+
+  // Financial Events
+  earningsDate: string | null; // Next earnings date
+  exDividendDate: string | null; // Ex-dividend date
+  dividendRate: number | null; // Annual dividend per share
 }
 
 export interface FundamentalAnalysis {

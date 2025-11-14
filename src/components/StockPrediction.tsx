@@ -252,6 +252,24 @@ export default function StockPrediction() {
             </Card>
           </div>
 
+          {/* Financial Events */}
+          {prediction.signals.events && prediction.signals.events.length > 0 && (
+            <Card className="p-6 border-2 border-yellow-300 bg-yellow-50">
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <span className="text-2xl">📅</span>
+                Eventi Finanziari
+              </h3>
+              <ul className="space-y-2">
+                {prediction.signals.events.map((signal, idx) => (
+                  <li key={idx} className="text-sm flex items-start gap-2">
+                    <span className="mt-1">→</span>
+                    <span className="font-medium">{signal}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
           {/* Signals */}
           <Card className="p-6">
             <h3 className="text-lg font-semibold mb-4">Segnali di Trading</h3>

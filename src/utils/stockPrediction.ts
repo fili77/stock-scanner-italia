@@ -10,6 +10,7 @@ import {
   detectDivergence,
   isVolumeBreakout,
 } from './advancedIndicators';
+import { analyzeFinancialEvents, calculateExpectedDividendDrop } from './financialEvents';
 
 /**
  * Calculate Simple Moving Average
@@ -493,24 +494,25 @@ export function predictStock(
   });
 
   // Weighted prediction
-  const predictedPrice = (
+  let predictedPrice = (
     regression.prediction * weights.regression +
     emaPredict * weights.ema +
     smaPredict * weights.sma +
     vwapPredict * weights.vwap
   );
 
-  const predictedChange = predictedPrice - currentPrice;
-  const predictedChangePercent = (predictedChange / currentPrice) * 100;
+  let predictedChange = predictedPrice - currentPrice;
+  let predictedChangePercent = (predictedChange / currentPrice) * 100;
 
   const signals = generateSignals(stockData, indicators);
   const trend = determineTrend(stockData, indicators);
-  const confidence = calculateConfidence(stockData, indicators, signals);
+  let confidence = calculateConfidence(stockData, indicators, signals);
   let recommendation = generateRecommendation(trend, indicators, confidence);
 
   // If fundamentals provided, combine with technical recommendation
   let combinedScore: number | undefined = undefined;
   let fundamentalSignals: string[] | undefined = undefined;
+  let eventSignals: string[] | undefined = undefined;
 
   if (fundamentals) {
     const { combineRecommendations } = require('./fundamentalAnalysis');
@@ -518,6 +520,31 @@ export function predictStock(
     recommendation = combined.recommendation;
     combinedScore = combined.score;
     fundamentalSignals = fundamentals.signals;
+
+    // Analyze financial events (earnings, dividends)
+    const eventAnalysis = analyzeFinancialEvents(fundamentals.data);
+    eventSignals = eventAnalysis.events;
+
+    // Adjust prediction based on financial events
+    if (eventAnalysis.adjustmentFactor !== 0) {
+      const adjustment = currentPrice * eventAnalysis.adjustmentFactor;
+      predictedPrice = predictedPrice + adjustment;
+      predictedChange = predictedPrice - currentPrice;
+      predictedChangePercent = (predictedChange / currentPrice) * 100;
+    }
+
+    // Adjust confidence if high volatility expected
+    if (eventAnalysis.volatilityWarning) {
+      confidence = Math.max(confidence * 0.85, 40); // Reduce confidence but keep minimum 40%
+    }
+
+    // Adjust for expected dividend drop
+    const dividendDrop = calculateExpectedDividendDrop(currentPrice, fundamentals.data);
+    if (dividendDrop !== 0) {
+      predictedPrice = predictedPrice + dividendDrop;
+      predictedChange = predictedPrice - currentPrice;
+      predictedChangePercent = (predictedChange / currentPrice) * 100;
+    }
   }
 
   return {
@@ -531,6 +558,7 @@ export function predictStock(
     signals: {
       ...signals,
       ...(fundamentalSignals && { fundamental: fundamentalSignals }),
+      ...(eventSignals && { events: eventSignals }),
     },
     indicators,
     ...(fundamentals && { fundamentals }),

@@ -134,7 +134,7 @@ export class StockService {
     try {
       const url = `${YAHOO_FINANCE_API_V10}/quoteSummary/${symbol}`;
       const params = {
-        modules: 'defaultKeyStatistics,financialData,summaryDetail,price',
+        modules: 'defaultKeyStatistics,financialData,summaryDetail,price,calendarEvents',
       };
 
       const response = await axios.get(url, { params });
@@ -148,6 +148,16 @@ export class StockService {
       const financialData = result.financialData || {};
       const summaryDetail = result.summaryDetail || {};
       const priceData = result.price || {};
+      const calendarEvents = result.calendarEvents || {};
+
+      // Extract earnings date
+      const earningsDate = calendarEvents.earnings?.earningsDate?.[0]?.fmt || null;
+
+      // Extract ex-dividend date
+      const exDividendDate = calendarEvents.exDividendDate?.fmt || summaryDetail.exDividendDate?.fmt || null;
+
+      // Extract dividend rate
+      const dividendRate = summaryDetail.dividendRate?.raw || null;
 
       return {
         // Valuation
@@ -184,6 +194,11 @@ export class StockService {
         marketCap: priceData.marketCap?.raw || null,
         beta: keyStats.beta?.raw || null,
         sharesOutstanding: keyStats.sharesOutstanding?.raw || null,
+
+        // Financial Events
+        earningsDate,
+        exDividendDate,
+        dividendRate,
       };
     } catch (error) {
       console.error('Error fetching fundamentals:', error);
@@ -210,6 +225,9 @@ export class StockService {
         marketCap: null,
         beta: null,
         sharesOutstanding: null,
+        earningsDate: null,
+        exDividendDate: null,
+        dividendRate: null,
       };
     }
   }
