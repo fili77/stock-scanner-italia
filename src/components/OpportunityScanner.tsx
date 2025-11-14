@@ -27,17 +27,24 @@ export default function OpportunityScanner() {
 
       console.log('Inizio scansione di', ITALIAN_STOCKS.length, 'titoli...');
 
-      // Fetch in parallelo (batches di 5 per non sovraccaricare)
-      const batchSize = 5;
+      // Fetch in parallelo (batches di 2 per evitare rate limiting)
+      const batchSize = 2;
       for (let i = 0; i < ITALIAN_STOCKS.length; i += batchSize) {
         const batch = ITALIAN_STOCKS.slice(i, i + batchSize);
+
+        console.log(`📦 Batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(ITALIAN_STOCKS.length / batchSize)}...`);
 
         const promises = batch.map(async (stock) => {
           try {
             // Fetch historical data (3 mesi)
+            console.log(`📥 Downloading ${stock.symbol}...`);
             const data = await StockService.getHistoricalData(stock.symbol, '3mo', '1d');
-            if (data.length < 30) return null;
+            if (data.length < 30) {
+              console.log(`⚠️ ${stock.symbol}: Dati insufficienti (${data.length} giorni)`);
+              return null;
+            }
 
+            console.log(`✅ ${stock.symbol}: ${data.length} giorni di dati`);
             stockDataMap.set(stock.symbol, data);
 
             // Fetch fundamentals (optional)
@@ -61,9 +68,15 @@ export default function OpportunityScanner() {
         });
 
         await Promise.all(promises);
+
+        // Delay di 800ms tra i batch per evitare rate limiting
+        if (i + batchSize < ITALIAN_STOCKS.length) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
       }
 
-      console.log('Dati fetched. Inizio analisi...');
+      console.log(`📊 Download completato: ${stockDataMap.size} titoli con dati validi`);
+      console.log('🔍 Inizio analisi per cercare opportunità...');
 
       // Run scanner
       const result = await scanForOpportunities(stockDataMap, fundamentalsMap, regimeMap);

@@ -2,7 +2,8 @@ import axios from 'axios';
 import { StockData, StockQuote, FundamentalData } from '@/types/stock';
 
 // CORS Proxy per aggirare le restrizioni CORS di Yahoo Finance
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+// Proviamo corsproxy.io che ha limiti più alti
+const CORS_PROXY = 'https://corsproxy.io/?';
 
 const YAHOO_FINANCE_API = 'https://query1.finance.yahoo.com/v8/finance';
 const YAHOO_FINANCE_API_V7 = 'https://query1.finance.yahoo.com/v7/finance';
@@ -23,7 +24,8 @@ function buildUrlWithParams(baseUrl: string, params: Record<string, any>): strin
  * Helper function to make CORS-safe requests
  */
 function withCorsProxy(url: string): string {
-  return CORS_PROXY + encodeURIComponent(url);
+  // corsproxy.io non richiede encoding dell'URL
+  return CORS_PROXY + url;
 }
 
 export class StockService {
