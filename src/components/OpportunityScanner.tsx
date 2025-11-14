@@ -4,15 +4,18 @@ import { StockService } from '@/services/stockService';
 import { scanForOpportunities, TradingOpportunity, ScannerResult } from '@/utils/opportunityScanner';
 import { detectMarketRegime } from '@/utils/regimeDetection';
 import { calculateTechnicalIndicators } from '@/utils/stockPrediction';
+import { StockData } from '@/types/stock';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Loader2, Search, TrendingUp, Target, Shield, AlertTriangle } from 'lucide-react';
+import { Loader2, Search, TrendingUp, Target, Shield, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 export default function OpportunityScanner() {
   const [scanResult, setScanResult] = useState<ScannerResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [rawDataMap, setRawDataMap] = useState<Map<string, StockData[]>>(new Map());
+  const [showRawData, setShowRawData] = useState(false);
 
   const handleScan = async () => {
     setLoading(true);
@@ -77,6 +80,9 @@ export default function OpportunityScanner() {
 
       console.log(`📊 Download completato: ${stockDataMap.size} titoli con dati validi`);
       console.log('🔍 Inizio analisi per cercare opportunità...');
+
+      // Salva i dati raw per visualizzazione
+      setRawDataMap(stockDataMap);
 
       // Run scanner
       const result = await scanForOpportunities(stockDataMap, fundamentalsMap, regimeMap);
@@ -324,6 +330,77 @@ export default function OpportunityScanner() {
             </ul>
           </Card>
         </div>
+      )}
+
+      {/* Dati Raw Scaricati */}
+      {rawDataMap.size > 0 && (
+        <Card className="p-6 mt-6 border-2 border-blue-500 bg-blue-50">
+          <div
+            className="flex items-center justify-between cursor-pointer"
+            onClick={() => setShowRawData(!showRawData)}
+          >
+            <h3 className="font-bold text-xl text-blue-900">
+              📊 DATI PREZZI SCARICATI ({rawDataMap.size} titoli) - CLICCA QUI
+            </h3>
+            {showRawData ? <ChevronUp className="h-6 w-6 text-blue-900" /> : <ChevronDown className="h-6 w-6 text-blue-900" />}
+          </div>
+
+          {showRawData && (
+            <div className="mt-6 space-y-4">
+              <p className="text-sm text-blue-900 mb-4 font-bold bg-white p-3 rounded">
+                📈 Ultimi 5 giorni di prezzi per ogni titolo (riga in GIALLO = prezzo di OGGI):
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Array.from(rawDataMap.entries()).map(([symbol, data]) => {
+                  const stockInfo = ITALIAN_STOCKS.find(s => s.symbol === symbol);
+                  const last5 = data.slice(-5);
+
+                  return (
+                    <div key={symbol} className="bg-white p-4 rounded border-2 border-blue-400 shadow-md">
+                      <h4 className="font-bold text-base mb-3 text-blue-900">
+                        {stockInfo?.name || symbol}
+                        <span className="text-sm text-gray-600 ml-2">({symbol})</span>
+                      </h4>
+
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-left text-blue-800 font-bold border-b-2 border-blue-300">
+                            <th className="pb-2">Data</th>
+                            <th className="text-right pb-2">Open</th>
+                            <th className="text-right pb-2">High</th>
+                            <th className="text-right pb-2">Low</th>
+                            <th className="text-right pb-2">Close</th>
+                            <th className="text-right pb-2">Volume</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {last5.map((d, i) => (
+                            <tr
+                              key={i}
+                              className={i === last5.length - 1 ? 'font-bold bg-yellow-200 border-2 border-yellow-400' : 'hover:bg-gray-50'}
+                            >
+                              <td className="py-1">{d.date}</td>
+                              <td className="text-right py-1">€{d.open.toFixed(3)}</td>
+                              <td className="text-right py-1">€{d.high.toFixed(3)}</td>
+                              <td className="text-right py-1">€{d.low.toFixed(3)}</td>
+                              <td className="text-right py-1 font-bold">€{d.close.toFixed(3)}</td>
+                              <td className="text-right py-1">{(d.volume / 1000000).toFixed(2)}M</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      <div className="mt-3 pt-3 border-t-2 border-blue-200 text-xs text-blue-800 font-bold">
+                        ✅ Totale: {data.length} giorni di dati storici
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </Card>
       )}
     </div>
   );
