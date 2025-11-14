@@ -12,6 +12,7 @@ import {
 } from './advancedIndicators';
 import { analyzeFinancialEvents, calculateExpectedDividendDrop } from './financialEvents';
 import { analyzeSupportResistance, calculateSRAdjustment } from './supportResistance';
+import { detectMarketRegime, shouldTradeInRegime, formatRegime, getRegimeEmoji } from './regimeDetection';
 
 /**
  * Calculate Simple Moving Average
@@ -514,6 +515,30 @@ export function predictStock(
   let confidence = calculateConfidence(stockData, indicators, signals);
   let recommendation = generateRecommendation(trend, indicators, confidence);
 
+  // Detect Market Regime (CRITICAL for short-term trading)
+  const regimeAnalysis = detectMarketRegime(stockData, indicators);
+  const regimeSignals = regimeAnalysis.signals;
+
+  // Adjust confidence based on regime
+  confidence = confidence * (regimeAnalysis.confidence / 100);
+
+  // Adjust prediction aggressiveness based on regime
+  if (regimeAnalysis.recommended_strategy === 'stay_cash') {
+    // In regimi sfavorevoli, riduci prediction e raccomanda cautela
+    confidence = Math.min(confidence, 50); // Cap confidence
+
+    if (recommendation === 'strong_buy') recommendation = 'hold';
+    if (recommendation === 'buy') recommendation = 'hold';
+
+    regimeSignals.push(`⚠️ REGIME SFAVOREVOLE - Ridurre operatività o stay in cash`);
+  } else if (regimeAnalysis.recommended_strategy === 'breakout_follow') {
+    // In breakout, aumenta confidence se allineato
+    if (trend === 'bullish' && (recommendation === 'buy' || recommendation === 'strong_buy')) {
+      confidence = Math.min(confidence * 1.15, 95);
+      regimeSignals.push(`✅ Regime e segnali allineati - ALTA PROBABILITÀ di successo`);
+    }
+  }
+
   // If fundamentals provided, combine with technical recommendation
   let combinedScore: number | undefined = undefined;
   let fundamentalSignals: string[] | undefined = undefined;
@@ -626,10 +651,20 @@ export function predictStock(
       ...(eventSignals && { events: eventSignals }),
       ...(srSignals && { supportResistance: srSignals }),
       ...(globalMarketSignals && { globalMarkets: globalMarketSignals }),
+      ...(regimeSignals && { regime: regimeSignals }),
     },
     indicators,
     ...(fundamentals && { fundamentals }),
     recommendation,
     ...(combinedScore !== undefined && { combinedScore }),
+
+    // Market regime information
+    marketRegime: {
+      type: formatRegime(regimeAnalysis.regime),
+      confidence: regimeAnalysis.confidence,
+      recommendedStrategy: regimeAnalysis.recommended_strategy,
+      positionSizeMultiplier: regimeAnalysis.position_size_multiplier,
+      shouldTrade: shouldTradeInRegime(regimeAnalysis.regime, regimeAnalysis.confidence),
+    },
   };
 }

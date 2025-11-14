@@ -59,11 +59,21 @@ export interface StockPrediction {
     events?: string[]; // Earnings, dividends, etc.
     supportResistance?: string[]; // Support/Resistance levels
     globalMarkets?: string[]; // Global market correlations
+    regime?: string[]; // Market regime signals
   };
   indicators: TechnicalIndicators;
   fundamentals?: FundamentalAnalysis;
   recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
   combinedScore?: number; // Score che combina tecnica + fondamentale
+
+  // Regime information
+  marketRegime?: {
+    type: string;
+    confidence: number;
+    recommendedStrategy: string;
+    positionSizeMultiplier: number;
+    shouldTrade: boolean;
+  };
 }
 
 export interface FundamentalData {

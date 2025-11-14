@@ -145,6 +145,28 @@ export default function StockPrediction() {
     }
   };
 
+  const getRegimeColorClass = (regimeType: string) => {
+    if (regimeType.includes('Rialzista')) return 'text-green-700 bg-green-50 border-green-300';
+    if (regimeType.includes('Ribassista')) return 'text-red-700 bg-red-50 border-red-300';
+    if (regimeType.includes('Laterale')) return 'text-blue-700 bg-blue-50 border-blue-300';
+    if (regimeType.includes('Alta Volatilità')) return 'text-orange-700 bg-orange-50 border-orange-300';
+    if (regimeType.includes('Bassa Volatilità')) return 'text-gray-700 bg-gray-50 border-gray-300';
+    if (regimeType.includes('Breakout')) return 'text-emerald-700 bg-emerald-50 border-emerald-300';
+    if (regimeType.includes('Breakdown')) return 'text-rose-700 bg-rose-50 border-rose-300';
+    return 'text-gray-700 bg-gray-50 border-gray-200';
+  };
+
+  const getRegimeEmoji = (regimeType: string) => {
+    if (regimeType.includes('Rialzista')) return '📈';
+    if (regimeType.includes('Ribassista')) return '📉';
+    if (regimeType.includes('Laterale')) return '↔️';
+    if (regimeType.includes('Alta Volatilità')) return '⚠️';
+    if (regimeType.includes('Bassa Volatilità')) return '😴';
+    if (regimeType.includes('Breakout')) return '🚀';
+    if (regimeType.includes('Breakdown')) return '💥';
+    return '📊';
+  };
+
   const selectedStockInfo = ITALIAN_STOCKS.find(s => s.symbol === selectedStock);
 
   return (
@@ -270,6 +292,74 @@ export default function StockPrediction() {
               </div>
             </Card>
           </div>
+
+          {/* Market Regime - CRITICAL for Short-Term Trading */}
+          {prediction.marketRegime && (
+            <Card className={`p-6 border-3 ${getRegimeColorClass(prediction.marketRegime.type)}`}>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-3xl">{getRegimeEmoji(prediction.marketRegime.type)}</span>
+                    <div>
+                      <h3 className="text-xl font-bold">Regime di Mercato: {prediction.marketRegime.type}</h3>
+                      <p className="text-sm opacity-80">Confidence: {prediction.marketRegime.confidence.toFixed(0)}%</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 mb-3">
+                    <div className="bg-white/50 p-3 rounded">
+                      <p className="text-xs font-medium opacity-70">Strategia Consigliata</p>
+                      <p className="text-sm font-bold mt-1">
+                        {prediction.marketRegime.recommendedStrategy === 'momentum' && '📈 Momentum'}
+                        {prediction.marketRegime.recommendedStrategy === 'mean_reversion' && '↔️ Mean Reversion'}
+                        {prediction.marketRegime.recommendedStrategy === 'stay_cash' && '💰 Stay Cash'}
+                        {prediction.marketRegime.recommendedStrategy === 'breakout_follow' && '🚀 Follow Breakout'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white/50 p-3 rounded">
+                      <p className="text-xs font-medium opacity-70">Position Size</p>
+                      <p className="text-sm font-bold mt-1">
+                        {prediction.marketRegime.positionSizeMultiplier === 1 ? '100%' : `${(prediction.marketRegime.positionSizeMultiplier * 100).toFixed(0)}%`}
+                        {prediction.marketRegime.positionSizeMultiplier > 1 && ' ⬆️'}
+                        {prediction.marketRegime.positionSizeMultiplier < 1 && ' ⬇️'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white/50 p-3 rounded">
+                      <p className="text-xs font-medium opacity-70">Operare?</p>
+                      <p className={`text-sm font-bold mt-1 ${prediction.marketRegime.shouldTrade ? 'text-green-700' : 'text-red-700'}`}>
+                        {prediction.marketRegime.shouldTrade ? '✅ SÌ' : '❌ NO - Stay Cash'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {!prediction.marketRegime.shouldTrade && (
+                    <div className="bg-red-100 border border-red-300 p-3 rounded mt-3">
+                      <p className="text-sm font-bold text-red-800">
+                        ⚠️ REGIME SFAVOREVOLE - Non operare o ridurre drasticamente le posizioni
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Regime Signals */}
+              {prediction.signals.regime && prediction.signals.regime.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-current/20">
+                  <p className="text-sm font-medium mb-2">Analisi Dettagliata:</p>
+                  <ul className="space-y-1">
+                    {prediction.signals.regime.map((signal, idx) => (
+                      <li key={idx} className="text-sm flex items-start gap-2">
+                        <span className="mt-0.5">•</span>
+                        <span>{signal}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Card>
+          )}
 
           {/* Financial Events */}
           {prediction.signals.events && prediction.signals.events.length > 0 && (
